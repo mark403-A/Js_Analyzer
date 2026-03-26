@@ -1,0 +1,1463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JS Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #080c10;
+    --bg2:      #0d1318;
+    --bg3:      #111820;
+    --border:   #1e2d3d;
+    --border2:  #243446;
+    --accent:   #00d4ff;
+    --accent2:  #00ff9d;
+    --warn:     #ff6b35;
+    --danger:   #ff3366;
+    --muted:    #3a5068;
+    --text:     #c8d8e8;
+    --text2:    #6a8aaa;
+    --mono:     'Share Tech Mono', monospace;
+    --sans:     'Rajdhani', sans-serif;
+    --ep:       #00d4ff;
+    --url:      #7b9fff;
+    --sec:      #ff3366;
+    --mail:     #ffd166;
+    --file:     #b06fff;
+  --cred:     #ff9f43;
+  --unauth:   #ee5a24;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── SCANLINES OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,.07) 2px,
+      rgba(0,0,0,.07) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex; align-items: center; gap: 16px;
+    padding: 10px 20px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .logo {
+    font-family: var(--mono);
+    font-size: 18px;
+    color: var(--accent);
+    letter-spacing: .1em;
+    white-space: nowrap;
+  }
+  .logo span { color: var(--accent2); }
+  .logo-sub {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--mono);
+    letter-spacing: .2em;
+    text-transform: uppercase;
+  }
+  .header-stats {
+    margin-left: auto;
+    display: flex; gap: 12px;
+  }
+  .stat-pill {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 3px;
+    border: 1px solid;
+    display: flex; align-items: center; gap: 6px;
+    transition: opacity .2s;
+  }
+  .stat-pill.ep   { color: var(--ep);   border-color: var(--ep);   background: #00d4ff11; }
+  .stat-pill.url  { color: var(--url);  border-color: var(--url);  background: #7b9fff11; }
+  .stat-pill.sec  { color: var(--sec);  border-color: var(--sec);  background: #ff336611; }
+  .stat-pill.mail { color: var(--mail); border-color: var(--mail); background: #ffd16611; }
+  .stat-pill.file   { color: var(--file);   border-color: var(--file);   background: #b06fff11; }
+  .stat-pill.cred   { color: var(--cred);   border-color: var(--cred);   background: #ff9f4311; }
+  .stat-pill.unauth { color: var(--unauth); border-color: var(--unauth); background: #ee5a2411; }
+  .stat-pill .dot { width:6px;height:6px;border-radius:50%;background:currentColor; }
+  .stat-pill.zero { opacity: .35; }
+
+  /* ── LAYOUT ── */
+  .main {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* ── LEFT PANEL ── */
+  .left-panel {
+    width: 340px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    background: var(--bg2);
+    overflow-y: auto;
+  }
+  .section-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    padding: 14px 16px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* URL input area */
+  .url-area {
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .url-input-row {
+    display: flex; gap: 6px; margin-bottom: 8px;
+  }
+  .url-input-row input {
+    flex: 1;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 7px 10px;
+    border-radius: 4px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .url-input-row input:focus { border-color: var(--accent); }
+  .url-input-row input::placeholder { color: var(--muted); }
+  .btn-add {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: bold;
+    padding: 7px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background .2s, transform .1s;
+    white-space: nowrap;
+  }
+  .btn-add:hover { background: #33ddff; }
+  .btn-add:active { transform: scale(.97); }
+
+  /* URL list */
+  .url-list {
+    max-height: 180px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .url-item {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 5px 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    animation: fadeIn .2s ease;
+  }
+  .url-item .url-text {
+    flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .url-item .status { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .url-item .status.pending  { background: var(--muted); }
+  .url-item .status.loading  { background: var(--accent); animation: pulse 1s infinite; }
+  .url-item .status.done     { background: var(--accent2); }
+  .url-item .status.error    { background: var(--danger); }
+  .url-item .remove-btn {
+    background: none; border: none; color: var(--muted);
+    cursor: pointer; font-size: 14px; line-height: 1;
+    padding: 0 2px; flex-shrink: 0;
+    transition: color .2s;
+  }
+  .url-item .remove-btn:hover { color: var(--danger); }
+
+  /* File upload */
+  .upload-area {
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .drop-zone {
+    border: 2px dashed var(--border2);
+    border-radius: 6px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+    position: relative;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: #00d4ff08;
+  }
+  .drop-zone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%;
+  }
+  .drop-icon { font-size: 28px; margin-bottom: 6px; }
+  .drop-text { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .drop-text span { color: var(--accent); }
+
+  .file-list {
+    margin-top: 8px;
+    display: flex; flex-direction: column; gap: 4px;
+    max-height: 120px; overflow-y: auto;
+  }
+  .file-item {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 5px 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    animation: fadeIn .2s ease;
+  }
+  .file-item .file-icon { color: var(--file); }
+  .file-item .file-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-item .file-size { color: var(--muted); flex-shrink: 0; }
+  .file-item .remove-btn {
+    background: none; border: none; color: var(--muted);
+    cursor: pointer; font-size: 14px; line-height: 1;
+    padding: 0 2px; flex-shrink: 0;
+    transition: color .2s;
+  }
+  .file-item .remove-btn:hover { color: var(--danger); }
+
+  /* Actions */
+  .actions {
+    padding: 12px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .btn-scan {
+    width: 100%;
+    background: linear-gradient(135deg, #00d4ff, #00ff9d);
+    color: #000;
+    border: none;
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: .1em;
+    padding: 11px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: opacity .2s, transform .1s;
+  }
+  .btn-scan:hover { opacity: .9; }
+  .btn-scan:active { transform: scale(.98); }
+  .btn-scan:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-row { display: flex; gap: 6px; }
+  .btn-sm {
+    flex: 1;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 7px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: border-color .2s, color .2s;
+    text-align: center;
+  }
+  .btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Filter toggles */
+  .filter-section { padding: 12px; border-bottom: 1px solid var(--border); }
+  .filter-label { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+  .filter-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 3px;
+    border: 1px solid;
+    cursor: pointer;
+    transition: opacity .2s, filter .2s;
+    user-select: none;
+  }
+  .chip.ep   { color: var(--ep);   border-color: var(--ep);   background: #00d4ff11; }
+  .chip.url  { color: var(--url);  border-color: var(--url);  background: #7b9fff11; }
+  .chip.sec  { color: var(--sec);  border-color: var(--sec);  background: #ff336611; }
+  .chip.mail { color: var(--mail); border-color: var(--mail); background: #ffd16611; }
+  .chip.file   { color: var(--file);   border-color: var(--file);   background: #b06fff11; }
+  .chip.cred   { color: var(--cred);   border-color: var(--cred);   background: #ff9f4311; }
+  .chip.unauth { color: var(--unauth); border-color: var(--unauth); background: #ee5a2411; }
+  .chip.off { opacity: .3; filter: grayscale(1); }
+
+  /* ── PROGRESS BAR ── */
+  .progress-bar {
+    height: 2px;
+    background: var(--border);
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    width: 0%;
+    transition: width .3s ease;
+  }
+
+  /* ── RIGHT PANEL ── */
+  .right-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  /* Search bar */
+  .search-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 14px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .search-bar input {
+    flex: 1;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .search-bar input:focus { border-color: var(--accent); }
+  .search-bar input::placeholder { color: var(--muted); }
+  .search-icon { color: var(--muted); font-size: 16px; }
+  .source-select {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+  }
+  .copy-all-btn, .export-btn {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: border-color .2s, color .2s;
+    white-space: nowrap;
+  }
+  .copy-all-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .export-btn:hover   { border-color: var(--accent);  color: var(--accent); }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    overflow-x: auto;
+  }
+  .tab {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 9px 18px;
+    cursor: pointer;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    transition: color .2s, border-color .2s;
+    white-space: nowrap;
+    display: flex; align-items: center; gap: 8px;
+    user-select: none;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active.ep   { color: var(--ep);   border-color: var(--ep); }
+  .tab.active.url  { color: var(--url);  border-color: var(--url); }
+  .tab.active.sec  { color: var(--sec);  border-color: var(--sec); }
+  .tab.active.mail { color: var(--mail); border-color: var(--mail); }
+  .tab.active.file  { color: var(--file);   border-color: var(--file); }
+  .tab.active.cred  { color: var(--cred);   border-color: var(--cred); }
+  .tab.active.unauth{ color: var(--unauth); border-color: var(--unauth); }
+  .tab-count {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: currentColor;
+    color: var(--bg);
+    font-weight: bold;
+    opacity: .85;
+  }
+
+  /* Results */
+  .results-container {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+  .results-list {
+    height: 100%;
+    overflow-y: auto;
+    padding: 0;
+  }
+
+  /* Empty state */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 12px;
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+  .empty-ascii {
+    font-size: 11px;
+    line-height: 1.4;
+    text-align: center;
+    opacity: .5;
+  }
+  .empty-msg { font-size: 13px; }
+
+  /* Result rows */
+  .result-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 14px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 12px;
+    transition: background .15s;
+    animation: fadeIn .2s ease;
+    cursor: pointer;
+  }
+  .result-row:hover { background: var(--bg3); }
+  .result-row:hover .copy-btn { opacity: 1; }
+  .result-cat-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .result-cat-dot.ep   { background: var(--ep); }
+  .result-cat-dot.url  { background: var(--url); }
+  .result-cat-dot.sec  { background: var(--sec); }
+  .result-cat-dot.mail { background: var(--mail); }
+  .result-cat-dot.file { background: var(--file); }
+  .result-badge {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: bold;
+    padding: 2px 5px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    letter-spacing: .06em;
+    opacity: .85;
+  }
+  .result-badge.ep     { background: #00d4ff22; color: var(--ep); }
+  .result-badge.url    { background: #7b9fff22; color: var(--url); }
+  .result-badge.sec    { background: #ff336622; color: var(--sec); }
+  .result-badge.cred   { background: #ff9f4322; color: var(--cred); }
+  .result-badge.unauth { background: #ee5a2422; color: var(--unauth); }
+  .result-badge.mail   { background: #ffd16622; color: var(--mail); }
+  .result-badge.file   { background: #b06fff22; color: var(--file); }
+  .result-value {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text);
+  }
+  .result-source {
+    color: var(--muted);
+    font-size: 10px;
+    flex-shrink: 0;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .copy-btn {
+    background: none; border: 1px solid var(--border2);
+    color: var(--text2); font-family: var(--mono); font-size: 10px;
+    padding: 2px 7px; border-radius: 3px; cursor: pointer;
+    opacity: 0; transition: opacity .15s, border-color .15s, color .15s;
+    flex-shrink: 0;
+  }
+  .copy-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .copy-btn.copied { color: var(--accent2); border-color: var(--accent2); opacity: 1 !important; }
+
+  /* Source group header */
+  .source-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 14px 5px;
+    background: #0d1318cc;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 2;
+    font-family: var(--mono); font-size: 11px;
+    color: var(--text2);
+    backdrop-filter: blur(4px);
+  }
+  .source-header .src-icon { color: var(--accent2); }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* Animations */
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  @keyframes spin  { to { transform: rotate(360deg); } }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 20px; right: 20px;
+    background: var(--bg3);
+    border: 1px solid var(--accent2);
+    color: var(--accent2);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 8px 16px;
+    border-radius: 5px;
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity .3s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+
+  /* Log console */
+  .log-console {
+    border-top: 1px solid var(--border);
+    background: var(--bg2);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    padding: 0;
+    height: 0;
+    overflow: hidden;
+    transition: height .3s ease;
+    flex-shrink: 0;
+  }
+  .log-console.open { height: 80px; overflow-y: auto; padding: 6px 14px; }
+  .log-line { line-height: 1.6; }
+  .log-line.ok  { color: var(--accent2); }
+  .log-line.err { color: var(--danger); }
+  .log-line.info { color: var(--accent); }
+
+  .toggle-log {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 14px;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    user-select: none;
+    flex-shrink: 0;
+    transition: color .2s;
+  }
+  .toggle-log:hover { color: var(--text); }
+  .toggle-log .arrow { transition: transform .3s; }
+  .toggle-log.open .arrow { transform: rotate(180deg); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div>
+    <div class="logo">JS<span>_</span>ANALYZER</div>
+    <div class="logo-sub">recon · extract · discover</div>
+  </div>
+  <div class="header-stats">
+    <div class="stat-pill ep zero" id="stat-ep"><div class="dot"></div><span id="cnt-ep">0</span> endpoints</div>
+    <div class="stat-pill url zero" id="stat-url"><div class="dot"></div><span id="cnt-url">0</span> urls</div>
+    <div class="stat-pill sec zero" id="stat-sec"><div class="dot"></div><span id="cnt-sec">0</span> secrets</div>
+    <div class="stat-pill cred zero" id="stat-cred"><div class="dot"></div><span id="cnt-cred">0</span> creds</div>
+    <div class="stat-pill unauth zero" id="stat-unauth"><div class="dot"></div><span id="cnt-unauth">0</span> no-auth</div>
+    <div class="stat-pill mail zero" id="stat-mail"><div class="dot"></div><span id="cnt-mail">0</span> emails</div>
+    <div class="stat-pill file zero" id="stat-file"><div class="dot"></div><span id="cnt-file">0</span> files</div>
+  </div>
+</header>
+
+<!-- PROGRESS -->
+<div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+
+    <div class="section-title">📡 Remote URLs</div>
+    <div class="url-area">
+      <div class="url-input-row">
+        <input type="text" id="url-input" placeholder="https://example.com/app.js" />
+        <button class="btn-add" onclick="addUrl()">+ ADD</button>
+      </div>
+      <div class="url-list" id="url-list"></div>
+    </div>
+
+    <div class="section-title">📁 Local Files</div>
+    <div class="upload-area">
+      <div class="drop-zone" id="drop-zone">
+        <input type="file" id="file-input" multiple accept=".js,.mjs,.ts,.jsx,.txt" onchange="handleFiles(this.files)">
+        <div class="drop-icon">⬆</div>
+        <div class="drop-text">Drop <span>.js</span> files here or <span>click</span></div>
+      </div>
+      <div class="file-list" id="file-list"></div>
+    </div>
+
+    <div class="section-title">🔍 Filters</div>
+    <div class="filter-section">
+      <div class="filter-label">Show categories</div>
+      <div class="filter-chips">
+        <div class="chip ep"   data-cat="endpoints" onclick="toggleChip(this)">Endpoints</div>
+        <div class="chip url"  data-cat="urls"      onclick="toggleChip(this)">URLs</div>
+        <div class="chip sec"  data-cat="secrets"   onclick="toggleChip(this)">Secrets</div>
+        <div class="chip mail" data-cat="emails"    onclick="toggleChip(this)">Emails</div>
+        <div class="chip file" data-cat="files"     onclick="toggleChip(this)">Files</div>
+        <div class="chip cred" data-cat="creds"     onclick="toggleChip(this)">Credentials</div>
+        <div class="chip unauth" data-cat="unauth"  onclick="toggleChip(this)">No-Auth Routes</div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-scan" id="scan-btn" onclick="startScan()">⚡ ANALYZE ALL</button>
+      <div class="btn-row">
+        <button class="btn-sm" onclick="clearAll()">✕ Clear</button>
+        <button class="btn-sm" onclick="exportJSON()">⬇ Export JSON</button>
+        <button class="btn-sm" onclick="exportTXT()">⬇ Export TXT</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+
+    <div class="search-bar">
+      <span class="search-icon">⌕</span>
+      <input type="text" id="search-input" placeholder="Filter results..." oninput="renderResults()" />
+      <select class="source-select" id="source-select" onchange="renderResults()">
+        <option value="all">All Sources</option>
+      </select>
+      <button class="copy-all-btn" onclick="copyAllVisible()">⎘ Copy All</button>
+      <button class="export-btn" onclick="exportGrep()">⬇ Grep List</button>
+    </div>
+
+    <div class="tabs" id="tabs">
+      <div class="tab active ep"   data-tab="all"       onclick="switchTab(this)">ALL <span class="tab-count" id="tc-all">0</span></div>
+      <div class="tab ep"          data-tab="endpoints" onclick="switchTab(this)">ENDPOINTS <span class="tab-count" id="tc-endpoints">0</span></div>
+      <div class="tab url"         data-tab="urls"      onclick="switchTab(this)">URLS <span class="tab-count" id="tc-urls">0</span></div>
+      <div class="tab sec"         data-tab="secrets"   onclick="switchTab(this)">SECRETS <span class="tab-count" id="tc-secrets">0</span></div>
+      <div class="tab cred"        data-tab="creds"     onclick="switchTab(this)">CREDS <span class="tab-count" id="tc-creds">0</span></div>
+      <div class="tab unauth"      data-tab="unauth"    onclick="switchTab(this)">NO-AUTH <span class="tab-count" id="tc-unauth">0</span></div>
+      <div class="tab mail"        data-tab="emails"    onclick="switchTab(this)">EMAILS <span class="tab-count" id="tc-emails">0</span></div>
+      <div class="tab file"        data-tab="files"     onclick="switchTab(this)">FILES <span class="tab-count" id="tc-files">0</span></div>
+    </div>
+
+    <div class="results-container">
+      <div class="results-list" id="results-list">
+        <div class="empty-state">
+          <div class="empty-ascii">
+░░░░░░░░░░░░░░░░░░░░░░░░<br>
+░  ADD JS URLS OR FILES ░<br>
+░  THEN HIT ANALYZE    ░<br>
+░░░░░░░░░░░░░░░░░░░░░░░░
+          </div>
+          <div class="empty-msg">Waiting for input…</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="toggle-log" id="toggle-log" onclick="toggleLog()">
+      <span class="arrow">▲</span>
+      <span id="log-label">Console (0)</span>
+    </div>
+    <div class="log-console" id="log-console"></div>
+
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+let urlSources    = [];
+let fileSources   = [];
+let allFindings   = [];
+let seen          = new Set();
+let activeTab     = 'all';
+let activeFilters = new Set(['endpoints','urls','secrets','creds','unauth','emails','files']);
+let logLines      = 0;
+
+// ═══════════════════════════════════════════════════════
+//  PATTERNS
+// ═══════════════════════════════════════════════════════
+
+// ── Generic path pattern: any quoted /word/... path with 2+ segments ──────────
+// This catches ALL custom paths like /sdds/, /xyz/v2/, /internal123/ etc.
+const GENERIC_PATH_RE = /["'`](\/[a-zA-Z0-9_~.-][a-zA-Z0-9_~./-]*\/[a-zA-Z0-9_~./-]{1,})[`"']/g;
+
+// High-value named endpoint patterns (kept for priority tagging)
+const NAMED_ENDPOINT_PATTERNS = [
+  /["'`]((?:https?:)?\/\/[^"'`\s]+\/(?:api|rest|graphql|v\d+)\/[a-zA-Z0-9/_-]+)[`"']/gi,
+  /["'`](\/api\/[a-zA-Z0-9/_.-]{2,})[`"']/gi,
+  /["'`](\/v\d+\/[a-zA-Z0-9/_.-]{2,})[`"']/gi,
+  /["'`](\/rest\/[a-zA-Z0-9/_.-]{2,})[`"']/gi,
+  /["'`](\/graphql[a-zA-Z0-9/_.-]*)[`"']/gi,
+  /["'`](\/oauth[0-9]*\/[a-zA-Z0-9/_-]+)[`"']/gi,
+  /["'`](\/auth[a-zA-Z0-9/_-]*)[`"']/gi,
+  /["'`](\/login[a-zA-Z0-9/_-]*)[`"']/gi,
+  /["'`](\/logout[a-zA-Z0-9/_-]*)[`"']/gi,
+  /["'`](\/token[a-zA-Z0-9/_-]*)[`"']/gi,
+  /["'`](\/admin[a-zA-Z0-9/_-]*)[`"']/gi,
+  /["'`](\/dashboard[a-zA-Z0-9/_-]*)[`"']/gi,
+  /["'`](\/internal[a-zA-Z0-9/_-]*)[`"']/gi,
+  /["'`](\/debug[a-zA-Z0-9/_-]*)[`"']/gi,
+  /["'`](\/config[a-zA-Z0-9/_-]*)[`"']/gi,
+  /["'`](\/backup[a-zA-Z0-9/_-]*)[`"']/gi,
+  /["'`](\/private[a-zA-Z0-9/_-]*)[`"']/gi,
+  /["'`](\/upload[a-zA-Z0-9/_-]*)[`"']/gi,
+  /["'`](\/download[a-zA-Z0-9/_-]*)[`"']/gi,
+  /["'`](\/\.well-known\/[a-zA-Z0-9/_-]+)[`"']/gi,
+  /["'`](\/idp\/[a-zA-Z0-9/_-]+)[`"']/gi,
+  /["'`](\/user[a-zA-Z0-9/_-]*)[`"']/gi,
+  /["'`](\/account[a-zA-Z0-9/_-]*)[`"']/gi,
+  /["'`](\/profile[a-zA-Z0-9/_-]*)[`"']/gi,
+  /["'`](\/settings[a-zA-Z0-9/_-]*)[`"']/gi,
+  /["'`](\/search[a-zA-Z0-9/_-]*)[`"']/gi,
+  /["'`](\/order[a-zA-Z0-9/_-]*)[`"']/gi,
+  /["'`](\/payment[a-zA-Z0-9/_-]*)[`"']/gi,
+  /["'`](\/webhook[a-zA-Z0-9/_-]*)[`"']/gi,
+  /["'`](\/health[a-zA-Z0-9/_-]*)[`"']/gi,
+  /["'`](\/status[a-zA-Z0-9/_-]*)[`"']/gi,
+  /["'`](\/metrics[a-zA-Z0-9/_-]*)[`"']/gi,
+  /["'`](\/actuator[a-zA-Z0-9/_-]*)[`"']/gi,
+  /["'`](\/swagger[a-zA-Z0-9/_-]*)[`"']/gi,
+  /["'`](\/openapi[a-zA-Z0-9/_-]*)[`"']/gi,
+  /["'`](\/docs[a-zA-Z0-9/_-]*)[`"']/gi,
+];
+
+// ── Template literal URLs: fetch(`${base}/some/path`) ────────────────────────
+const TEMPLATE_PATH_RE = /`[^`]*?\$\{[^}]+\}([/][a-zA-Z0-9/_.-]{2,})[^`]*`/g;
+
+// ── fetch() / axios / XHR call patterns ──────────────────────────────────────
+const FETCH_CALL_PATTERNS = [
+  /fetch\s*\(\s*["'`](\/[a-zA-Z0-9/_.-]{3,})["'`]/g,
+  /axios\s*\.\s*(?:get|post|put|patch|delete|head)\s*\(\s*["'`](\/[a-zA-Z0-9/_.-]{3,})["'`]/gi,
+  /\$(?:http|resource)\s*\.\s*(?:get|post|put|patch|delete)\s*\(\s*["'`](\/[a-zA-Z0-9/_.-]{3,})["'`]/gi,
+  /(?:url|endpoint|path|route|href|action)\s*[:=]\s*["'`](\/[a-zA-Z0-9/_.-]{3,})["'`]/gi,
+  /(?:url|endpoint|path|route)\s*\+\s*["'`](\/[a-zA-Z0-9/_.-]{2,})["'`]/gi,
+  /["'`](\/[a-zA-Z0-9_-]{2,}(?:\/[a-zA-Z0-9_:-]{1,}){1,})["'`]/g,
+];
+
+const URL_PATTERNS = [
+  /["'`](https?:\/\/[^\s"'`<>{]{10,})[`"']/g,
+  /["'`](wss?:\/\/[^\s"'`<>{]{10,})[`"']/g,
+  /["'`](sftp:\/\/[^\s"'`<>{]{10,})[`"']/g,
+  /(https?:\/\/[a-zA-Z0-9.-]+\.s3[a-zA-Z0-9.-]*\.amazonaws\.com[^\s"'<>]*)/g,
+  /(https?:\/\/[a-zA-Z0-9.-]+\.blob\.core\.windows\.net[^\s"'<>]*)/g,
+  /(https?:\/\/storage\.googleapis\.com\/[^\s"'<>]*)/g,
+  /https:\/\/[a-z0-9-]+\.firebaseio\.com/g,
+  /(https?:\/\/[a-zA-Z0-9-]+\.execute-api\.[a-z0-9-]+\.amazonaws\.com[^\s"'<>]*)/g,
+];
+
+// ── Credential / password patterns ───────────────────────────────────────────
+const CRED_PATTERNS = [
+  [/(?:password|passwd|pwd)\s*[:=]\s*["'`]([^"'`\s]{4,})["'`]/gi,           "password"],
+  [/(?:secret|client_secret)\s*[:=]\s*["'`]([^"'`\s]{6,})["'`]/gi,          "secret"],
+  [/(?:api_?key|apikey)\s*[:=]\s*["'`]([^"'`\s]{8,})["'`]/gi,               "api_key"],
+  [/(?:auth_?token|authtoken)\s*[:=]\s*["'`]([^"'`\s]{8,})["'`]/gi,         "auth_token"],
+  [/(?:access_?token|accesstoken)\s*[:=]\s*["'`]([^"'`\s]{8,})["'`]/gi,     "access_token"],
+  [/(?:bearer)\s*[:=]\s*["'`]([^"'`\s]{8,})["'`]/gi,                        "bearer"],
+  [/(?:private_?key|privatekey)\s*[:=]\s*["'`]([^"'`\s]{8,})["'`]/gi,       "private_key"],
+  [/(?:encryption_?key)\s*[:=]\s*["'`]([^"'`\s]{8,})["'`]/gi,               "encryption_key"],
+  [/(?:database_?url|db_?url|db_?uri)\s*[:=]\s*["'`]([^"'`\s]{8,})["'`]/gi, "db_url"],
+  [/(?:connection_?string)\s*[:=]\s*["'`]([^"'`\s]{8,})["'`]/gi,            "conn_string"],
+  [/(?:smtp_?pass|mail_?pass)\s*[:=]\s*["'`]([^"'`\s]{4,})["'`]/gi,         "mail_password"],
+  [/(?:consumer_?key|consumer_?secret)\s*[:=]\s*["'`]([^"'`\s]{8,})["'`]/gi,"consumer_key"],
+  [/(?:app_?secret|appsecret)\s*[:=]\s*["'`]([^"'`\s]{8,})["'`]/gi,         "app_secret"],
+  [/["'`](?:x-api-key|x-auth-token|x-secret-key)["'`]\s*:\s*["'`]([^"'`\s]{6,})["'`]/gi, "header_cred"],
+  // Hardcoded basic auth
+  [/Basic\s+([A-Za-z0-9+/]{20,}={0,2})/g,                                   "Basic Auth"],
+  // AWS-style env vars
+  [/AWS_SECRET_ACCESS_KEY\s*[:=]\s*["'`]?([A-Za-z0-9/+=]{40})["'`]?/g,     "AWS Secret"],
+  [/AWS_ACCESS_KEY_ID\s*[:=]\s*["'`]?(AKIA[0-9A-Z]{16})["'`]?/g,           "AWS Key ID"],
+];
+
+// ── Secret / token patterns ───────────────────────────────────────────────────
+const SECRET_PATTERNS = [
+  [/(AKIA[0-9A-Z]{16})/g,                                                    "AWS Key"],
+  [/(AIza[0-9A-Za-z\-_]{35})/g,                                              "Google API"],
+  [/(sk_live_[0-9a-zA-Z]{24,})/g,                                            "Stripe Live"],
+  [/(ghp_[0-9a-zA-Z]{36})/g,                                                 "GitHub PAT"],
+  [/(xox[baprs]-[0-9a-zA-Z\-]{10,48})/g,                                    "Slack Token"],
+  [/(eyJ[A-Za-z0-9_\-]{10,}\.eyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]+)/g,  "JWT"],
+  [/(-----BEGIN (?:RSA |EC )?PRIVATE KEY-----)/g,                            "Private Key"],
+  [/(mongodb(?:\+srv)?:\/\/[^\s"'<>]+)/g,                                    "MongoDB"],
+  [/(postgres(?:ql)?:\/\/[^\s"'<>]+)/g,                                      "PostgreSQL"],
+  [/(mysql:\/\/[a-z0-9._%+\-]+:[^\s:@]+@[^\s"'?]+)/g,                      "MySQL URI"],
+  [/\b(ya29\.[a-z0-9_\-]{30,})\b/g,                                         "Google OAuth2"],
+  [/\d{9}:[a-zA-Z0-9_\-]{35}/g,                                             "Telegram Bot"],
+  [/lin_api_[a-zA-Z0-9]{40}/g,                                              "Linear API"],
+  [/dop_v1_[a-z0-9]{64}/g,                                                   "DigitalOcean"],
+  [/SK[0-9a-fA-F]{32}/g,                                                     "Twilio"],
+  [/SG\.[\w\d\-_]{22}\.[\w\d\-_]{43}/g,                                     "SendGrid"],
+  [/glpat-[0-9a-zA-Z\-_]{20}/g,                                             "GitLab Token"],
+  [/shpat_[0-9a-fA-F]{32}/g,                                                 "Shopify"],
+  [/NRII-[a-zA-Z0-9]{20,}/g,                                                 "New Relic"],
+  [/(EAACEdEose0cBA[A-Z0-9]{20,})\b/g,                                      "Facebook Token"],
+  [/\b(sgp_[A-Z0-9_\-]{60,70})\b/g,                                         "Segment Token"],
+];
+
+// ── Unauthenticated / no-auth route patterns ─────────────────────────────────
+// These look for code patterns that suggest a route requires NO authentication
+const UNAUTH_PATTERNS = [
+  // requiresAuth: false / isPublic: true / allowAnonymous
+  [/(?:requiresAuth|requireAuth|authenticated|needsAuth)\s*:\s*false/gi,     "requiresAuth:false"],
+  [/(?:isPublic|public|openAccess)\s*:\s*true/gi,                            "isPublic:true"],
+  [/allowAnonymous\s*(?:[:=]\s*true|\(\))/gi,                                "allowAnonymous"],
+  [/permitAll\s*\(\s*\)/gi,                                                   "permitAll()"],
+  [/\.anonymous\s*\(\s*\)/gi,                                                 ".anonymous()"],
+  [/noauth|no_auth|no-auth/gi,                                               "no-auth flag"],
+  // Express/Node: router.get('/path') without auth middleware nearby
+  [/router\s*\.\s*(?:get|post|put|patch|delete)\s*\(\s*["'`](\/[a-zA-Z0-9/_-]{2,})["'`]\s*,\s*(?!.*(?:auth|jwt|verify|protect|guard|middleware|isLoggedIn|requireLogin))[^)]{0,60}\)/gi, "route:no-middleware"],
+  // @PermitAll / @Public annotations (Java/Spring)
+  [/@(?:PermitAll|Public|Unsecured|AllowAll)\b/g,                            "@PermitAll"],
+  // [AllowAnonymous] .NET
+  [/\[AllowAnonymous\]/g,                                                     "[AllowAnonymous]"],
+  // skipAuth / bypassAuth
+  [/(?:skipAuth|bypassAuth|ignoreAuth)\s*[:=]\s*true/gi,                     "skipAuth:true"],
+  // Passport: passport.authenticate with {session:false} and no failure handling
+  [/authenticate\s*\(\s*["']anonymous["']/gi,                                "anonymous strategy"],
+  // Middleware skip: if(!token) return next() instead of 401
+  [/if\s*\(\s*!(?:token|auth|jwt|session|user|req\.user)\s*\)\s*(?:return\s+)?next\s*\(\s*\)/gi, "auth-skip:next()"],
+  // CORS allow all + no auth check pattern
+  [/Access-Control-Allow-Origin['":\s]+\*[^]*?(?:no|without|skip).*?auth/gi, "CORS:*+no-auth"],
+  // Vue/React router: meta: { requiresAuth: false }
+  [/meta\s*:\s*\{[^}]*(?:requiresAuth|auth|protected)\s*:\s*false/gi,       "router-meta:no-auth"],
+  // Unprotected swagger / openapi
+  [/swagger-ui\.html|api-docs|\/openapi\.json/gi,                            "exposed-apidocs"],
+  // health/metrics typically unauthed
+  [/['"](\/health(?:check)?|\/ping|\/ready|\/alive|\/metrics|\/actuator\/health|\/status)['"]/gi, "unauth-health-endpoint"],
+];
+
+const EMAIL_PATTERN = /([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,6})/g;
+const FILE_PATTERN  = /["'`]([a-zA-Z0-9_/.\-]+\.(?:sql|csv|xlsx|xls|json|xml|yaml|yml|txt|log|conf|config|cfg|ini|env|bak|backup|old|orig|copy|key|pem|crt|cer|p12|pfx|doc|docx|pdf|zip|tar|gz|rar|7z|sh|bat|ps1|py|rb|pl))[`"']/gi;
+
+// ═══════════════════════════════════════════════════════
+//  NOISE FILTERS
+// ═══════════════════════════════════════════════════════
+const NOISE_DOMAINS = new Set(['www.w3.org','schemas.openxmlformats.org','schemas.microsoft.com','purl.org','openoffice.org','ns.adobe.com','example.com','test.com','localhost','127.0.0.1','npmjs.org','registry.npmjs.org']);
+const NOISE_STRINGS = new Set(['http://','https://','/a','/P','/R','/V','/W','zone.js','bn.js','hash.js','md5.js','sha.js']);
+const PATH_NOISE_RE = [
+  /^\.\.\?/,/^[a-z]{2}(-[a-z]{2})?\.js$/,/^[a-z]{2}(-[a-z]{2})?$/,
+  /^sha\d*$/,/^aes$|^des$|^md5$/,/^\d+ \d+ R$/,
+  /^xl\//,/^webpack/,/^\+/,/^\$\{/,/^#/,/^\/[a-zA-Z]$/,/^http:\/\/$/,/_ngcontent/,
+  // Extra noise: pure static asset paths
+  /\.(png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|css|map)$/i,
+  // Single segment with no real meaning
+  /^\/[a-zA-Z]{1,2}$/,
+  // Version numbers only
+  /^\/\d+(\.\d+)*$/,
+  // Repeated slashes / just root
+  /^\/+$/,
+  // CSS class-like
+  /^\/[a-z]+-[a-z]+-/,
+];
+// Static file extensions to skip as paths
+const STATIC_EXTS = new Set(['.js','.jsx','.ts','.tsx','.css','.scss','.less','.png','.jpg','.gif','.svg','.ico','.woff','.ttf','.eot','.map','.html','.htm']);
+
+function isValidPath(v) {
+  if (!v || v.length < 4) return false;
+  if (NOISE_STRINGS.has(v)) return false;
+  if (PATH_NOISE_RE.some(r => r.test(v))) return false;
+  if (!v.startsWith('/')) return false;
+  // Must have at least 2 real path segments
+  const segs = v.split('/').filter(s => s.length > 0);
+  if (segs.length < 1) return false;
+  // Reject if only static file extensions
+  const last = '/' + (segs[segs.length-1] || '');
+  if (STATIC_EXTS.has(last.match(/\.[a-z]+$/i)?.[0] || '')) return false;
+  // Reject very short single segments unless they look meaningful
+  if (segs.length === 1 && segs[0].length < 3) return false;
+  // Reject webpack chunk names
+  if (/chunk|bundle|vendor|polyfill|runtime|manifest/i.test(v)) return false;
+  // Reject node module paths
+  if (v.includes('node_modules')) return false;
+  return true;
+}
+
+function isValidUrl(v) {
+  if (!v || v.length < 15) return false;
+  const vl = v.toLowerCase();
+  for (const d of NOISE_DOMAINS) if (vl.includes(d)) return false;
+  if (v.includes('{') || vl.includes('undefined') || vl.includes('null')) return false;
+  if (vl.startsWith('data:')) return false;
+  if (['.css','.png','.jpg','.gif','.svg','.woff','.ttf'].some(e=>vl.endsWith(e))) return false;
+  return true;
+}
+function isValidSecret(v) {
+  if (!v || v.length < 10) return false;
+  const vl = v.toLowerCase();
+  if (['example','placeholder','your_','xxxx','test','<','>','${'].some(x=>vl.includes(x))) return false;
+  return true;
+}
+function isValidCred(v) {
+  if (!v || v.length < 4) return false;
+  const vl = v.toLowerCase();
+  // Skip obvious placeholders
+  if (['example','placeholder','your','xxxx','test','changeme','undefined','null','<insert','password123','admin123','secret123'].some(x=>vl.includes(x))) return false;
+  if (v.startsWith('${') || v.startsWith('{{')) return false;
+  // Must not be just a variable reference
+  if (/^[a-zA-Z_$][a-zA-Z0-9_$.]*$/.test(v)) return false;
+  return true;
+}
+function isValidEmail(v) {
+  if (!v || !v.includes('@')) return false;
+  const dom = v.split('@').pop().toLowerCase();
+  if (['example.com','test.com','domain.com'].includes(dom)) return false;
+  if (['example','test','placeholder','noreply'].some(x=>v.toLowerCase().includes(x))) return false;
+  return true;
+}
+function isValidFile(v) {
+  if (!v || v.length < 3) return false;
+  const vl = v.toLowerCase();
+  if (['package.json','tsconfig.json','webpack','babel','eslint','node_modules','.min.','polyfill','vendor','chunk','bundle'].some(x=>vl.includes(x))) return false;
+  if (vl.endsWith('.map')) return false;
+  if (vl.endsWith('.json') && v.split('/').pop().length <= 7) return false;
+  return true;
+}
+
+// ═══════════════════════════════════════════════════════
+//  ANALYZE
+// ═══════════════════════════════════════════════════════
+function analyzeContent(content, sourceName) {
+  const findings = [];
+  function add(cat, value) {
+    const key = cat + ':' + value;
+    if (seen.has(key)) return;
+    seen.add(key);
+    findings.push({category: cat, value, source: sourceName});
+  }
+
+  // Clone pattern so lastIndex resets every call
+  function scan(pattern, body, cb) {
+    const flags = pattern.flags.includes('g') ? pattern.flags : pattern.flags + 'g';
+    const re = new RegExp(pattern.source, flags);
+    let m;
+    while ((m = re.exec(body)) !== null) {
+      const v = (m[1] !== undefined ? m[1] : m[0]).trim();
+      if (v) cb(v, m);
+      if (re.lastIndex === m.index) re.lastIndex++;
+    }
+  }
+
+  // 1. Named high-value endpoints (priority)
+  for (const p of NAMED_ENDPOINT_PATTERNS) {
+    scan(p, content, v => { if (isValidPath(v)) add('endpoints', v); });
+  }
+
+  // 2. Generic path extraction — catches ANY quoted /xxx/yyy path
+  scan(GENERIC_PATH_RE, content, v => { if (isValidPath(v)) add('endpoints', v); });
+
+  // 3. fetch/axios/XHR call patterns
+  for (const p of FETCH_CALL_PATTERNS) {
+    scan(p, content, v => { if (isValidPath(v)) add('endpoints', v); });
+  }
+
+  // 4. Template literal path segments
+  scan(TEMPLATE_PATH_RE, content, v => { if (isValidPath(v)) add('endpoints', v); });
+
+  // 5. URLs
+  for (const p of URL_PATTERNS) {
+    scan(p, content, v => { if (isValidUrl(v)) add('urls', v); });
+  }
+
+  // 6. Secrets / tokens
+  for (const [p, label] of SECRET_PATTERNS) {
+    scan(p, content, v => {
+      if (isValidSecret(v)) {
+        const masked = v.length > 20 ? v.slice(0,10) + '\u2026' + v.slice(-4) : v;
+        add('secrets', '[' + label + '] ' + masked);
+      }
+    });
+  }
+
+  // 7. Credentials / passwords
+  for (const [p, label] of CRED_PATTERNS) {
+    scan(p, content, v => {
+      if (isValidCred(v)) {
+        const masked = v.length > 20 ? v.slice(0,8) + '\u2026' + v.slice(-4) : v;
+        add('creds', '[' + label + '] ' + masked);
+      }
+    });
+  }
+
+  // 8. Unauthenticated route patterns
+  for (const [p, label] of UNAUTH_PATTERNS) {
+    scan(p, content, (v, m) => {
+      // Use the full match for context, truncated
+      const ctx = m[0].replace(/\s+/g,' ').trim();
+      const display = '[' + label + '] ' + ctx.slice(0, 120);
+      add('unauth', display);
+    });
+  }
+
+  // 9. Emails
+  scan(EMAIL_PATTERN, content, v => { if (isValidEmail(v)) add('emails', v); });
+
+  // 10. Files
+  scan(FILE_PATTERN, content, v => { if (isValidFile(v)) add('files', v); });
+
+  return findings;
+}
+
+// ═══════════════════════════════════════════════════════
+//  UI — URL management
+// ═══════════════════════════════════════════════════════
+let uidCounter = 0;
+
+function addUrl() {
+  const input = document.getElementById('url-input');
+  const raw = input.value.trim();
+  if (!raw) return;
+  const urls = raw.split(/[\n,\s]+/).map(u=>u.trim()).filter(u=>u.startsWith('http'));
+  urls.forEach(url => {
+    if (urlSources.find(s=>s.url===url)) return;
+    urlSources.push({id: ++uidCounter, url, status:'pending'});
+  });
+  input.value = '';
+  renderUrlList();
+}
+
+document.getElementById('url-input').addEventListener('keydown', e => { if (e.key==='Enter') addUrl(); });
+
+function renderUrlList() {
+  const el = document.getElementById('url-list');
+  el.innerHTML = urlSources.map(s => `
+    <div class="url-item" id="url-item-${s.id}">
+      <div class="status ${s.status}"></div>
+      <div class="url-text" title="${s.url}">${s.url}</div>
+      <button class="remove-btn" onclick="removeUrl(${s.id})">×</button>
+    </div>`).join('');
+}
+
+function removeUrl(id) {
+  urlSources = urlSources.filter(s=>s.id!==id);
+  renderUrlList();
+}
+
+function setUrlStatus(id, status) {
+  const s = urlSources.find(u=>u.id===id);
+  if (s) { s.status = status; renderUrlList(); }
+}
+
+// ═══════════════════════════════════════════════════════
+//  UI — File management
+// ═══════════════════════════════════════════════════════
+function handleFiles(files) {
+  Array.from(files).forEach(file => {
+    if (fileSources.find(f=>f.name===file.name)) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      fileSources.push({id: ++uidCounter, name: file.name, size: file.size, content: e.target.result});
+      renderFileList();
+    };
+    reader.readAsText(file);
+  });
+}
+
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag-over');
+  handleFiles(e.dataTransfer.files);
+});
+
+function renderFileList() {
+  const el = document.getElementById('file-list');
+  el.innerHTML = fileSources.map(f => `
+    <div class="file-item">
+      <span class="file-icon">\u2b20</span>
+      <span class="file-name" title="${f.name}">${f.name}</span>
+      <span class="file-size">${formatBytes(f.size)}</span>
+      <button class="remove-btn" onclick="removeFile(${f.id})">×</button>
+    </div>`).join('');
+}
+
+function removeFile(id) {
+  fileSources = fileSources.filter(f=>f.id!==id);
+  renderFileList();
+}
+
+function formatBytes(b) {
+  if (b < 1024) return b+'B';
+  if (b < 1024*1024) return (b/1024).toFixed(1)+'KB';
+  return (b/1024/1024).toFixed(1)+'MB';
+}
+
+// ═══════════════════════════════════════════════════════
+//  SCAN
+// ═══════════════════════════════════════════════════════
+async function startScan() {
+  const btn = document.getElementById('scan-btn');
+  const total = urlSources.length + fileSources.length;
+  if (total === 0) { toast('Add URLs or files first'); return; }
+
+  btn.disabled = true;
+  btn.textContent = '\u23f3 SCANNING\u2026';
+
+  let done = 0;
+  updateProgress(0);
+
+  const sources = document.getElementById('source-select');
+  while (sources.options.length > 1) sources.remove(1);
+
+  for (const f of fileSources) {
+    log('Analyzing file: ' + f.name, 'info');
+    try {
+      const findings = analyzeContent(f.content, f.name);
+      allFindings.push(...findings);
+      addSourceOption(f.name);
+      log('\u2713 ' + f.name + ' \u2192 ' + findings.length + ' findings', 'ok');
+    } catch(e) {
+      log('\u2717 ' + f.name + ': ' + e.message, 'err');
+    }
+    done++;
+    updateProgress(done / total * 100);
+    renderResults();
+    updateStats();
+  }
+
+  for (const s of urlSources) {
+    setUrlStatus(s.id, 'loading');
+    log('Fetching: ' + s.url, 'info');
+    try {
+      const content = await fetchUrl(s.url);
+      const name = s.url.split('/').pop().split('?')[0] || s.url;
+      const findings = analyzeContent(content, name);
+      allFindings.push(...findings);
+      addSourceOption(name);
+      setUrlStatus(s.id, 'done');
+      log('\u2713 ' + name + ' \u2192 ' + findings.length + ' findings', 'ok');
+    } catch(e) {
+      setUrlStatus(s.id, 'error');
+      log('\u2717 ' + s.url + ': ' + e.message, 'err');
+    }
+    done++;
+    updateProgress(done / total * 100);
+    renderResults();
+    updateStats();
+  }
+
+  btn.disabled = false;
+  btn.textContent = '\u26a1 ANALYZE ALL';
+  updateProgress(100);
+  setTimeout(() => updateProgress(0), 1200);
+  toast('Done! ' + allFindings.length + ' total findings');
+}
+
+async function fetchUrl(url) {
+  try {
+    const resp = await fetch(url, { mode: 'cors', cache: 'no-store' });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    return await resp.text();
+  } catch(e) {
+    const proxy = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+    const resp2 = await fetch(proxy, {cache: 'no-store'});
+    if (!resp2.ok) throw new Error('Proxy HTTP ' + resp2.status);
+    const data = await resp2.json();
+    return data.contents || '';
+  }
+}
+
+function updateProgress(pct) {
+  document.getElementById('progress-fill').style.width = pct + '%';
+}
+
+function addSourceOption(name) {
+  const sel = document.getElementById('source-select');
+  if (![...sel.options].find(o=>o.value===name)) {
+    const opt = document.createElement('option');
+    opt.value = name; opt.textContent = name;
+    sel.appendChild(opt);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════
+const CAT_CLASS = {endpoints:'ep', urls:'url', secrets:'sec', creds:'cred', unauth:'unauth', emails:'mail', files:'file'};
+
+function renderResults() {
+  const list = document.getElementById('results-list');
+  const search = document.getElementById('search-input').value.toLowerCase();
+  const srcFilter = document.getElementById('source-select').value;
+
+  let filtered = allFindings.filter(f => {
+    if (activeTab !== 'all' && f.category !== activeTab) return false;
+    if (!activeFilters.has(f.category)) return false;
+    if (srcFilter !== 'all' && f.source !== srcFilter) return false;
+    if (search && !f.value.toLowerCase().includes(search) && !f.source.toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    if (allFindings.length === 0) {
+      list.innerHTML = '<div class="empty-state"><div class="empty-ascii">\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591<br>\u2591  ADD JS URLS OR FILES \u2591<br>\u2591  THEN HIT ANALYZE    \u2591<br>\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591</div><div class="empty-msg">Waiting for input\u2026</div></div>';
+    } else {
+      list.innerHTML = '<div class="empty-state"><div class="empty-msg">No results match current filters</div></div>';
+    }
+    updateTabCounts(filtered);
+    return;
+  }
+
+  window._renderedFindings = filtered;
+
+  const bySource = {};
+  filtered.forEach(f => {
+    if (!bySource[f.source]) bySource[f.source] = [];
+    bySource[f.source].push(f);
+  });
+
+  let html = '';
+  for (const [src, items] of Object.entries(bySource)) {
+    html += '<div class="source-header"><span class="src-icon">\u25c8</span>' + escHtml(src) + ' <span style="color:var(--muted)">(' + items.length + ')</span></div>';
+    items.forEach(f => {
+      const cls = CAT_CLASS[f.category] || '';
+      const idx = filtered.indexOf(f);
+      html += '<div class="result-row" data-idx="' + idx + '">' +
+        '<div class="result-cat-dot ' + cls + '"></div>' +
+        '<div class="result-badge ' + cls + '">' + (f.category === 'endpoints' ? 'EP' : f.category === 'urls' ? 'URL' : f.category === 'secrets' ? 'SEC' : f.category === 'creds' ? 'CRED' : f.category === 'unauth' ? 'OPEN' : f.category === 'emails' ? 'MAIL' : 'FILE') + '</div>' +
+        '<div class="result-value" title="' + escHtml(f.value) + '">' + escHtml(f.value) + '</div>' +
+        '<div class="result-source">' + escHtml(f.source) + '</div>' +
+        '<button class="copy-btn" data-idx="' + idx + '">copy</button>' +
+        '</div>';
+    });
+  }
+  list.innerHTML = html;
+  updateTabCounts(filtered);
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function updateTabCounts(filtered) {
+  const counts = {all: filtered.length, endpoints:0, urls:0, secrets:0, creds:0, unauth:0, emails:0, files:0};
+  filtered.forEach(f => { if (counts[f.category]!==undefined) counts[f.category]++; });
+  for (const [k,v] of Object.entries(counts)) {
+    const el = document.getElementById('tc-'+k);
+    if (el) el.textContent = v;
+  }
+}
+
+function updateStats() {
+  const cats   = ['endpoints','urls','secrets','creds','unauth','emails','files'];
+  const keys   = ['ep',      'url', 'sec',    'cred', 'unauth','mail',  'file'];
+  cats.forEach((c,i) => {
+    const n = allFindings.filter(f=>f.category===c).length;
+    const cnt = document.getElementById('cnt-'+keys[i]);
+    const stat = document.getElementById('stat-'+keys[i]);
+    if (cnt)  cnt.textContent = n;
+    if (stat) stat.classList.toggle('zero', n===0);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  TABS & FILTERS
+// ═══════════════════════════════════════════════════════
+function switchTab(el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  activeTab = el.dataset.tab;
+  renderResults();
+}
+
+function toggleChip(el) {
+  const cat = el.dataset.cat;
+  if (activeFilters.has(cat)) { activeFilters.delete(cat); el.classList.add('off'); }
+  else                        { activeFilters.add(cat);    el.classList.remove('off'); }
+  renderResults();
+}
+
+// ═══════════════════════════════════════════════════════
+//  COPY & EXPORT
+// ═══════════════════════════════════════════════════════
+function copyValue(val, btn) {
+  navigator.clipboard.writeText(val).then(() => {
+    if (btn && btn.classList.contains('copy-btn')) {
+      const orig = btn.textContent;
+      btn.textContent = '\u2713';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1200);
+    } else {
+      toast('Copied!');
+    }
+  });
+}
+
+function copyAllVisible() {
+  const search = document.getElementById('search-input').value.toLowerCase();
+  const srcFilter = document.getElementById('source-select').value;
+  const vals = allFindings
+    .filter(f => {
+      if (activeTab !== 'all' && f.category !== activeTab) return false;
+      if (!activeFilters.has(f.category)) return false;
+      if (srcFilter !== 'all' && f.source !== srcFilter) return false;
+      if (search && !f.value.toLowerCase().includes(search)) return false;
+      return true;
+    })
+    .map(f => f.value);
+  navigator.clipboard.writeText(vals.join('\n')).then(() => toast('Copied ' + vals.length + ' items'));
+}
+
+function exportJSON() {
+  const out = {};
+  allFindings.forEach(f => {
+    if (!out[f.source]) out[f.source] = {};
+    if (!out[f.source][f.category]) out[f.source][f.category] = [];
+    out[f.source][f.category].push(f.value);
+  });
+  download('js_findings.json', JSON.stringify(out, null, 2), 'application/json');
+}
+
+function exportTXT() {
+  let txt = 'JS ANALYZER RESULTS\n' + '='.repeat(60) + '\n';
+  const bySource = {};
+  allFindings.forEach(f => {
+    if (!bySource[f.source]) bySource[f.source] = {};
+    if (!bySource[f.source][f.category]) bySource[f.source][f.category] = [];
+    bySource[f.source][f.category].push(f.value);
+  });
+  for (const [src, cats] of Object.entries(bySource)) {
+    txt += '\n[' + src + ']\n';
+    for (const [cat, vals] of Object.entries(cats)) {
+      txt += '\n  ' + cat.toUpperCase() + '\n';
+      vals.forEach(v => txt += '    ' + v + '\n');
+    }
+  }
+  download('js_findings.txt', txt, 'text/plain');
+}
+
+function exportGrep() {
+  const vals = allFindings
+    .filter(f => activeTab==='all' || f.category===activeTab)
+    .filter(f => activeFilters.has(f.category))
+    .map(f => f.value);
+  download('js_grep.txt', vals.join('\n'), 'text/plain');
+}
+
+function download(name, content, mime) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], {type: mime}));
+  a.download = name;
+  a.click();
+  toast('Downloaded: ' + name);
+}
+
+// ═══════════════════════════════════════════════════════
+//  MISC
+// ═══════════════════════════════════════════════════════
+function clearAll() {
+  allFindings = []; seen = new Set();
+  urlSources.forEach(s => s.status = 'pending');
+  renderUrlList();
+  const sel = document.getElementById('source-select');
+  while (sel.options.length > 1) sel.remove(1);
+  renderResults(); updateStats(); clearLog();
+  toast('Cleared');
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+function log(msg, type='') {
+  logLines++;
+  document.getElementById('log-label').textContent = 'Console (' + logLines + ')';
+  const el = document.getElementById('log-console');
+  const line = document.createElement('div');
+  line.className = 'log-line ' + type;
+  line.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+function clearLog() {
+  logLines = 0;
+  document.getElementById('log-label').textContent = 'Console (0)';
+  document.getElementById('log-console').innerHTML = '';
+}
+
+function toggleLog() {
+  const el = document.getElementById('log-console');
+  const btn = document.getElementById('toggle-log');
+  const isOpen = el.classList.toggle('open');
+  btn.classList.toggle('open', isOpen);
+}
+
+// Persistent delegated click handler for result rows
+document.getElementById('results-list').addEventListener('click', function(e) {
+  const btn = e.target.closest('.copy-btn');
+  const row = e.target.closest('.result-row');
+  if (btn) {
+    e.stopPropagation();
+    const f = (window._renderedFindings || [])[+btn.dataset.idx];
+    if (f) copyValue(f.value, btn);
+  } else if (row) {
+    const f = (window._renderedFindings || [])[+row.dataset.idx];
+    if (f) copyValue(f.value, null);
+  }
+});
+</script>
+</body>
+</html>
