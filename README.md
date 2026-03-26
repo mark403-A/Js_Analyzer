@@ -28,4 +28,5 @@ cat js.txt | while read url; do
     echo "[-] Failed: $url"
   fi
 done
+============================
 3: Upload js_files 
