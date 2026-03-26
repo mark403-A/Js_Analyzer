@@ -14,10 +14,9 @@ Click Analyze All
 Review categorized results (endpoints, secrets, etc.)
 
 1 : collect all js file (save js.txt)  
-2:  mkdir -p js_files
+2: step 
+  mkdir -p js_files
 
-3. Run this |
-             
 cat js.txt | while read url; do
   filename=$(echo -n "$url" | md5sum | cut -d' ' -f1)
 
@@ -29,5 +28,4 @@ cat js.txt | while read url; do
     echo "[-] Failed: $url"
   fi
 done
-
 3: Upload js_files 
