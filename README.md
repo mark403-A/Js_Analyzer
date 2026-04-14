@@ -16,19 +16,20 @@ Click Analyze All
 Review categorized results (endpoints, secrets, etc.)
 
 1 : collect all js file (save js.txt)  
-2: step 
-  mkdir -p js_files
+2:   mkdir -p js_files
 
-cat js.txt | while read url; do
-  filename=$(echo -n "$url" | md5sum | cut -d' ' -f1)
+i=1
+while read url; do
+  name=$(basename "$url" | cut -d'?' -f1)
 
-  curl -s --fail "$url" -o "js_files/$filename.js"
+  filename="${i}_${name}"
 
-  if [ $? -eq 0 ]; then
-    echo "[+] $url -> $filename.js"
+  if curl -s --fail "$url" -o "js_files/$filename"; then
+    echo "[+] Saved: $url -> $filename"
+    ((i++))
   else
     echo "[-] Failed: $url"
   fi
-done
+done < js.txt
 
 3: Upload js_files 
