@@ -1,1462 +1,1343 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>JS Analyzer</title>
+<title>JS Analyzer v2</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg:       #080c10;
-    --bg2:      #0d1318;
-    --bg3:      #111820;
-    --border:   #1e2d3d;
-    --border2:  #243446;
-    --accent:   #00d4ff;
-    --accent2:  #00ff9d;
-    --warn:     #ff6b35;
-    --danger:   #ff3366;
-    --muted:    #3a5068;
-    --text:     #c8d8e8;
-    --text2:    #6a8aaa;
-    --mono:     'Share Tech Mono', monospace;
-    --sans:     'Rajdhani', sans-serif;
-    --ep:       #00d4ff;
-    --url:      #7b9fff;
-    --sec:      #ff3366;
-    --mail:     #ffd166;
-    --file:     #b06fff;
-  --cred:     #ff9f43;
-  --unauth:   #ee5a24;
-  }
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html { height: 100%; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--sans);
-    font-size: 15px;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
+:root {
+  --bg:#080c10;--bg2:#0d1318;--bg3:#111820;--border:#1e2d3d;--border2:#243446;
+  --accent:#00d4ff;--accent2:#00ff9d;--warn:#ff6b35;--danger:#ff3366;
+  --muted:#3a5068;--text:#c8d8e8;--text2:#6a8aaa;
+  --mono:'Share Tech Mono',monospace;--sans:'Rajdhani',sans-serif;
+  --ep:#00d4ff;--url:#7b9fff;--sec:#ff3366;--mail:#ffd166;
+  --file:#b06fff;--cred:#ff9f43;--unauth:#ee5a24;--entropy:#ff00ff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;display:flex;flex-direction:column;overflow:hidden}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.07) 2px,rgba(0,0,0,.07) 4px);pointer-events:none;z-index:9999}
 
-  /* ── SCANLINES OVERLAY ── */
-  body::before {
-    content: '';
-    position: fixed; inset: 0;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0,0,0,.07) 2px,
-      rgba(0,0,0,.07) 4px
-    );
-    pointer-events: none;
-    z-index: 9999;
-  }
+header{display:flex;align-items:center;gap:16px;padding:10px 20px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0}
+.logo{font-family:var(--mono);font-size:18px;color:var(--accent);letter-spacing:.1em}
+.logo span{color:var(--accent2)}
+.logo-sub{font-size:11px;color:var(--muted);font-family:var(--mono);letter-spacing:.2em;text-transform:uppercase}
+.hstats{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.pill{font-family:var(--mono);font-size:10px;padding:3px 7px;border-radius:3px;border:1px solid;display:flex;align-items:center;gap:4px;transition:opacity .2s}
+.pill .dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+.pill.ep{color:var(--ep);border-color:var(--ep);background:#00d4ff11}
+.pill.url{color:var(--url);border-color:var(--url);background:#7b9fff11}
+.pill.sec{color:var(--sec);border-color:var(--sec);background:#ff336611}
+.pill.mail{color:var(--mail);border-color:var(--mail);background:#ffd16611}
+.pill.file{color:var(--file);border-color:var(--file);background:#b06fff11}
+.pill.cred{color:var(--cred);border-color:var(--cred);background:#ff9f4311}
+.pill.unauth{color:var(--unauth);border-color:var(--unauth);background:#ee5a2411}
+.pill.entropy{color:var(--entropy);border-color:var(--entropy);background:#ff00ff11}
+.pill.cloud{color:#39e0c0;border-color:#39e0c0;background:#39e0c011}
+.pill.zero{opacity:.3}
 
-  /* ── HEADER ── */
-  header {
-    display: flex; align-items: center; gap: 16px;
-    padding: 10px 20px;
-    background: var(--bg2);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-  .logo {
-    font-family: var(--mono);
-    font-size: 18px;
-    color: var(--accent);
-    letter-spacing: .1em;
-    white-space: nowrap;
-  }
-  .logo span { color: var(--accent2); }
-  .logo-sub {
-    font-size: 11px;
-    color: var(--muted);
-    font-family: var(--mono);
-    letter-spacing: .2em;
-    text-transform: uppercase;
-  }
-  .header-stats {
-    margin-left: auto;
-    display: flex; gap: 12px;
-  }
-  .stat-pill {
-    font-family: var(--mono);
-    font-size: 12px;
-    padding: 3px 10px;
-    border-radius: 3px;
-    border: 1px solid;
-    display: flex; align-items: center; gap: 6px;
-    transition: opacity .2s;
-  }
-  .stat-pill.ep   { color: var(--ep);   border-color: var(--ep);   background: #00d4ff11; }
-  .stat-pill.url  { color: var(--url);  border-color: var(--url);  background: #7b9fff11; }
-  .stat-pill.sec  { color: var(--sec);  border-color: var(--sec);  background: #ff336611; }
-  .stat-pill.mail { color: var(--mail); border-color: var(--mail); background: #ffd16611; }
-  .stat-pill.file   { color: var(--file);   border-color: var(--file);   background: #b06fff11; }
-  .stat-pill.cred   { color: var(--cred);   border-color: var(--cred);   background: #ff9f4311; }
-  .stat-pill.unauth { color: var(--unauth); border-color: var(--unauth); background: #ee5a2411; }
-  .stat-pill .dot { width:6px;height:6px;border-radius:50%;background:currentColor; }
-  .stat-pill.zero { opacity: .35; }
+.progress-bar{height:3px;background:var(--border);flex-shrink:0}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));width:0%;transition:width .15s}
 
-  /* ── LAYOUT ── */
-  .main {
-    display: flex;
-    flex: 1;
-    min-height: 0;
-  }
+.main{display:flex;flex:1;min-height:0}
 
-  /* ── LEFT PANEL ── */
-  .left-panel {
-    width: 340px;
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    border-right: 1px solid var(--border);
-    background: var(--bg2);
-    overflow-y: auto;
-  }
-  .section-title {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--muted);
-    letter-spacing: .2em;
-    text-transform: uppercase;
-    padding: 14px 16px 8px;
-    border-bottom: 1px solid var(--border);
-  }
+.left{width:320px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid var(--border);background:var(--bg2);overflow-y:auto}
+.stitle{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.2em;text-transform:uppercase;padding:10px 14px 6px;border-bottom:1px solid var(--border)}
 
-  /* URL input area */
-  .url-area {
-    padding: 12px;
-    border-bottom: 1px solid var(--border);
-  }
-  .url-input-row {
-    display: flex; gap: 6px; margin-bottom: 8px;
-  }
-  .url-input-row input {
-    flex: 1;
-    background: var(--bg3);
-    border: 1px solid var(--border2);
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 12px;
-    padding: 7px 10px;
-    border-radius: 4px;
-    outline: none;
-    transition: border-color .2s;
-  }
-  .url-input-row input:focus { border-color: var(--accent); }
-  .url-input-row input::placeholder { color: var(--muted); }
-  .btn-add {
-    background: var(--accent);
-    color: #000;
-    border: none;
-    font-family: var(--mono);
-    font-size: 12px;
-    font-weight: bold;
-    padding: 7px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background .2s, transform .1s;
-    white-space: nowrap;
-  }
-  .btn-add:hover { background: #33ddff; }
-  .btn-add:active { transform: scale(.97); }
+.url-area{padding:10px;border-bottom:1px solid var(--border)}
+.url-row{display:flex;gap:6px;margin-bottom:6px}
+.url-row input{flex:1;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:11px;padding:6px 9px;border-radius:4px;outline:none}
+.url-row input:focus{border-color:var(--accent)}
+.url-row input::placeholder{color:var(--muted)}
+.btn-add{background:var(--accent);color:#000;border:none;font-family:var(--mono);font-size:11px;font-weight:bold;padding:6px 10px;border-radius:4px;cursor:pointer}
+.url-list{display:flex;flex-direction:column;gap:3px;max-height:140px;overflow-y:auto}
+.url-item{display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:4px 7px;font-family:var(--mono);font-size:10px;color:var(--text2)}
+.url-item .utxt{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dot-s{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot-s.pending{background:var(--muted)}.dot-s.loading{background:var(--accent);animation:pulse 1s infinite}
+.dot-s.done{background:var(--accent2)}.dot-s.error{background:var(--danger)}
 
-  /* URL list */
-  .url-list {
-    max-height: 180px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .url-item {
-    display: flex; align-items: center; gap: 6px;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 5px 8px;
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text2);
-    animation: fadeIn .2s ease;
-  }
-  .url-item .url-text {
-    flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  .url-item .status { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .url-item .status.pending  { background: var(--muted); }
-  .url-item .status.loading  { background: var(--accent); animation: pulse 1s infinite; }
-  .url-item .status.done     { background: var(--accent2); }
-  .url-item .status.error    { background: var(--danger); }
-  .url-item .remove-btn {
-    background: none; border: none; color: var(--muted);
-    cursor: pointer; font-size: 14px; line-height: 1;
-    padding: 0 2px; flex-shrink: 0;
-    transition: color .2s;
-  }
-  .url-item .remove-btn:hover { color: var(--danger); }
+.upload-area{padding:10px;border-bottom:1px solid var(--border)}
+.dropzone{border:2px dashed var(--border2);border-radius:6px;padding:14px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;position:relative;overflow:hidden}
+.dropzone:hover,.dropzone.over{border-color:var(--accent);background:#00d4ff08}
+.dropzone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;z-index:2}
+.drop-icon{font-size:20px;margin-bottom:3px;pointer-events:none}
+.drop-txt{font-family:var(--mono);font-size:10px;color:var(--muted);pointer-events:none}
+.drop-txt b{color:var(--accent)}
+.file-list{margin-top:6px;display:flex;flex-direction:column;gap:3px;max-height:140px;overflow-y:auto}
+.fitem{display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:4px 7px;font-family:var(--mono);font-size:10px;color:var(--text2)}
+.fitem .fname{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fitem .fsize{color:var(--muted);flex-shrink:0}
+.fitem .fst{font-size:9px;padding:1px 5px;border-radius:2px;flex-shrink:0;border:1px solid currentColor}
+.fitem .fst.pending{color:var(--muted)}.fitem .fst.loaded{color:var(--accent2)}
+.fitem .fst.processing{color:var(--accent);animation:pulse 1s infinite}
+.fitem .fst.done{color:var(--accent2)}.fitem .fst.error{color:var(--danger)}
+.xbtn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 2px;transition:color .15s}
+.xbtn:hover{color:var(--danger)}
 
-  /* File upload */
-  .upload-area {
-    padding: 12px;
-    border-bottom: 1px solid var(--border);
-  }
-  .drop-zone {
-    border: 2px dashed var(--border2);
-    border-radius: 6px;
-    padding: 20px;
-    text-align: center;
-    cursor: pointer;
-    transition: border-color .2s, background .2s;
-    position: relative;
-  }
-  .drop-zone:hover, .drop-zone.drag-over {
-    border-color: var(--accent);
-    background: #00d4ff08;
-  }
-  .drop-zone input[type=file] {
-    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%;
-  }
-  .drop-icon { font-size: 28px; margin-bottom: 6px; }
-  .drop-text { font-family: var(--mono); font-size: 12px; color: var(--muted); }
-  .drop-text span { color: var(--accent); }
+.filter-area{padding:10px;border-bottom:1px solid var(--border)}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.chip{font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:3px;border:1px solid;cursor:pointer;user-select:none;transition:opacity .2s}
+.chip.ep{color:var(--ep);border-color:var(--ep);background:#00d4ff11}
+.chip.url{color:var(--url);border-color:var(--url);background:#7b9fff11}
+.chip.sec{color:var(--sec);border-color:var(--sec);background:#ff336611}
+.chip.mail{color:var(--mail);border-color:var(--mail);background:#ffd16611}
+.chip.file{color:var(--file);border-color:var(--file);background:#b06fff11}
+.chip.cred{color:var(--cred);border-color:var(--cred);background:#ff9f4311}
+.chip.unauth{color:var(--unauth);border-color:var(--unauth);background:#ee5a2411}
+.chip.entropy{color:var(--entropy);border-color:var(--entropy);background:#ff00ff11}
+.chip.cloud{color:#39e0c0;border-color:#39e0c0;background:#39e0c011}
+.chip.off{opacity:.25;filter:grayscale(1)}
 
-  .file-list {
-    margin-top: 8px;
-    display: flex; flex-direction: column; gap: 4px;
-    max-height: 120px; overflow-y: auto;
-  }
-  .file-item {
-    display: flex; align-items: center; gap: 6px;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 5px 8px;
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text2);
-    animation: fadeIn .2s ease;
-  }
-  .file-item .file-icon { color: var(--file); }
-  .file-item .file-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .file-item .file-size { color: var(--muted); flex-shrink: 0; }
-  .file-item .remove-btn {
-    background: none; border: none; color: var(--muted);
-    cursor: pointer; font-size: 14px; line-height: 1;
-    padding: 0 2px; flex-shrink: 0;
-    transition: color .2s;
-  }
-  .file-item .remove-btn:hover { color: var(--danger); }
+.entropy-area{padding:10px;border-bottom:1px solid var(--border)}
+.entropy-row{display:flex;align-items:center;gap:8px;margin-top:6px}
+.entropy-row label{font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap}
+.entropy-row input[type=range]{flex:1}
+.entropy-val{font-family:var(--mono);font-size:10px;color:var(--entropy);min-width:28px}
 
-  /* Actions */
-  .actions {
-    padding: 12px;
-    display: flex; flex-direction: column; gap: 8px;
-  }
-  .btn-scan {
-    width: 100%;
-    background: linear-gradient(135deg, #00d4ff, #00ff9d);
-    color: #000;
-    border: none;
-    font-family: var(--mono);
-    font-size: 14px;
-    font-weight: bold;
-    letter-spacing: .1em;
-    padding: 11px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: opacity .2s, transform .1s;
-  }
-  .btn-scan:hover { opacity: .9; }
-  .btn-scan:active { transform: scale(.98); }
-  .btn-scan:disabled { opacity: .4; cursor: not-allowed; }
-  .btn-row { display: flex; gap: 6px; }
-  .btn-sm {
-    flex: 1;
-    background: var(--bg3);
-    border: 1px solid var(--border2);
-    color: var(--text2);
-    font-family: var(--mono);
-    font-size: 11px;
-    padding: 7px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: border-color .2s, color .2s;
-    text-align: center;
-  }
-  .btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+.actions{padding:10px;display:flex;flex-direction:column;gap:7px}
+.btn-scan{width:100%;background:linear-gradient(135deg,#00d4ff,#00ff9d);color:#000;border:none;font-family:var(--mono);font-size:13px;font-weight:bold;padding:10px;border-radius:5px;cursor:pointer;transition:opacity .2s}
+.btn-scan:hover{opacity:.9}.btn-scan:disabled{opacity:.4;cursor:not-allowed}
+.btn-row{display:flex;gap:5px}
+.btn-sm{flex:1;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);font-family:var(--mono);font-size:10px;padding:6px;border-radius:3px;cursor:pointer;text-align:center;transition:border-color .2s,color .2s}
+.btn-sm:hover{border-color:var(--accent);color:var(--accent)}
 
-  /* Filter toggles */
-  .filter-section { padding: 12px; border-bottom: 1px solid var(--border); }
-  .filter-label { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-bottom: 8px; }
-  .filter-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .chip {
-    font-family: var(--mono);
-    font-size: 11px;
-    padding: 3px 10px;
-    border-radius: 3px;
-    border: 1px solid;
-    cursor: pointer;
-    transition: opacity .2s, filter .2s;
-    user-select: none;
-  }
-  .chip.ep   { color: var(--ep);   border-color: var(--ep);   background: #00d4ff11; }
-  .chip.url  { color: var(--url);  border-color: var(--url);  background: #7b9fff11; }
-  .chip.sec  { color: var(--sec);  border-color: var(--sec);  background: #ff336611; }
-  .chip.mail { color: var(--mail); border-color: var(--mail); background: #ffd16611; }
-  .chip.file   { color: var(--file);   border-color: var(--file);   background: #b06fff11; }
-  .chip.cred   { color: var(--cred);   border-color: var(--cred);   background: #ff9f4311; }
-  .chip.unauth { color: var(--unauth); border-color: var(--unauth); background: #ee5a2411; }
-  .chip.off { opacity: .3; filter: grayscale(1); }
+.right{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
+.searchbar{display:flex;align-items:center;gap:7px;padding:7px 12px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0}
+.searchbar input{flex:1;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:12px;padding:5px 10px;border-radius:4px;outline:none}
+.searchbar input:focus{border-color:var(--accent)}
+.searchbar input::placeholder{color:var(--muted)}
+.src-sel{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);font-family:var(--mono);font-size:11px;padding:5px 8px;border-radius:4px;outline:none;cursor:pointer}
+.tbtn{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);font-family:var(--mono);font-size:10px;padding:5px 10px;border-radius:3px;cursor:pointer;white-space:nowrap;transition:border-color .15s,color .15s}
+.tbtn:hover{border-color:var(--accent2);color:var(--accent2)}
 
-  /* ── PROGRESS BAR ── */
-  .progress-bar {
-    height: 2px;
-    background: var(--border);
-    flex-shrink: 0;
-    overflow: hidden;
-  }
-  .progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-    width: 0%;
-    transition: width .3s ease;
-  }
+.tabs{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto}
+.tab{font-family:var(--mono);font-size:10px;padding:7px 11px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;display:flex;align-items:center;gap:5px;user-select:none;transition:color .15s}
+.tab:hover{color:var(--text)}
+.tab.active.ep{color:var(--ep);border-color:var(--ep)}
+.tab.active.url{color:var(--url);border-color:var(--url)}
+.tab.active.sec{color:var(--sec);border-color:var(--sec)}
+.tab.active.mail{color:var(--mail);border-color:var(--mail)}
+.tab.active.file{color:var(--file);border-color:var(--file)}
+.tab.active.cred{color:var(--cred);border-color:var(--cred)}
+.tab.active.unauth{color:var(--unauth);border-color:var(--unauth)}
+.tab.active.entropy{color:var(--entropy);border-color:var(--entropy)}
+.tab.active.cloud{color:#39e0c0;border-color:#39e0c0}
+.tab-n{font-size:8px;padding:1px 4px;border-radius:8px;background:currentColor;color:var(--bg);font-weight:bold}
 
-  /* ── RIGHT PANEL ── */
-  .right-panel {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    min-height: 0;
-  }
+.scanbar{display:none;align-items:center;gap:8px;padding:4px 12px;background:var(--bg2);border-bottom:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--accent);flex-shrink:0}
+.scanbar.on{display:flex}
+.spin{width:9px;height:9px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
 
-  /* Search bar */
-  .search-bar {
-    display: flex; align-items: center; gap: 8px;
-    padding: 8px 14px;
-    background: var(--bg2);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-  .search-bar input {
-    flex: 1;
-    background: var(--bg3);
-    border: 1px solid var(--border2);
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 13px;
-    padding: 6px 12px;
-    border-radius: 4px;
-    outline: none;
-    transition: border-color .2s;
-  }
-  .search-bar input:focus { border-color: var(--accent); }
-  .search-bar input::placeholder { color: var(--muted); }
-  .search-icon { color: var(--muted); font-size: 16px; }
-  .source-select {
-    background: var(--bg3);
-    border: 1px solid var(--border2);
-    color: var(--text2);
-    font-family: var(--mono);
-    font-size: 12px;
-    padding: 6px 10px;
-    border-radius: 4px;
-    outline: none;
-    cursor: pointer;
-  }
-  .copy-all-btn, .export-btn {
-    background: var(--bg3);
-    border: 1px solid var(--border2);
-    color: var(--text2);
-    font-family: var(--mono);
-    font-size: 11px;
-    padding: 6px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: border-color .2s, color .2s;
-    white-space: nowrap;
-  }
-  .copy-all-btn:hover { border-color: var(--accent2); color: var(--accent2); }
-  .export-btn:hover   { border-color: var(--accent);  color: var(--accent); }
+.rlist-wrap{flex:1;overflow:hidden}
+.rlist{height:100%;overflow-y:auto;padding:0}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;color:var(--muted);font-family:var(--mono)}
+.empty pre{font-size:10px;opacity:.4;line-height:1.5}
 
-  /* Tabs */
-  .tabs {
-    display: flex;
-    background: var(--bg2);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-    overflow-x: auto;
-  }
-  .tab {
-    font-family: var(--mono);
-    font-size: 12px;
-    padding: 9px 18px;
-    cursor: pointer;
-    color: var(--muted);
-    border-bottom: 2px solid transparent;
-    transition: color .2s, border-color .2s;
-    white-space: nowrap;
-    display: flex; align-items: center; gap: 8px;
-    user-select: none;
-  }
-  .tab:hover { color: var(--text); }
-  .tab.active.ep   { color: var(--ep);   border-color: var(--ep); }
-  .tab.active.url  { color: var(--url);  border-color: var(--url); }
-  .tab.active.sec  { color: var(--sec);  border-color: var(--sec); }
-  .tab.active.mail { color: var(--mail); border-color: var(--mail); }
-  .tab.active.file  { color: var(--file);   border-color: var(--file); }
-  .tab.active.cred  { color: var(--cred);   border-color: var(--cred); }
-  .tab.active.unauth{ color: var(--unauth); border-color: var(--unauth); }
-  .tab-count {
-    font-size: 10px;
-    padding: 1px 6px;
-    border-radius: 10px;
-    background: currentColor;
-    color: var(--bg);
-    font-weight: bold;
-    opacity: .85;
-  }
+.src-hdr{display:flex;align-items:center;gap:7px;padding:5px 12px;background:#0d1318dd;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:2;font-family:var(--mono);font-size:10px;color:var(--text2);backdrop-filter:blur(4px)}
+.rrow{display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px;cursor:pointer;transition:background .1s}
+.rrow:hover{background:var(--bg3)}
+.rrow:hover .cbtn{opacity:1}
+.cat-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.cat-dot.ep{background:var(--ep)}.cat-dot.url{background:var(--url)}.cat-dot.sec{background:var(--sec)}
+.cat-dot.mail{background:var(--mail)}.cat-dot.file{background:var(--file)}.cat-dot.cred{background:var(--cred)}
+.cat-dot.unauth{background:var(--unauth)}.cat-dot.entropy{background:var(--entropy)}.cat-dot.cloud{background:#39e0c0}
+.badge{font-size:8px;font-weight:bold;padding:2px 5px;border-radius:2px;flex-shrink:0}
+.badge.ep{background:#00d4ff22;color:var(--ep)}.badge.url{background:#7b9fff22;color:var(--url)}
+.badge.sec{background:#ff336622;color:var(--sec)}.badge.cred{background:#ff9f4322;color:var(--cred)}
+.badge.unauth{background:#ee5a2422;color:var(--unauth)}.badge.mail{background:#ffd16622;color:var(--mail)}
+.badge.file{background:#b06fff22;color:var(--file)}.badge.entropy{background:#ff00ff22;color:var(--entropy)}
+.badge.cloud{background:#39e0c022;color:#39e0c0}
+.conf-badge{font-size:8px;padding:1px 5px;border-radius:2px;flex-shrink:0;border:1px solid}
+.conf-badge.high{color:#00ff9d;border-color:#00ff9d33}.conf-badge.med{color:var(--warn);border-color:#ff6b3533}.conf-badge.low{color:var(--muted);border-color:var(--muted)}
+.rval{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+.ctx-snip{font-size:9px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px}
+.rsrc{color:var(--muted);font-size:9px;flex-shrink:0;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cbtn{background:none;border:1px solid var(--border2);color:var(--text2);font-family:var(--mono);font-size:9px;padding:2px 6px;border-radius:2px;cursor:pointer;opacity:0;transition:opacity .1s,color .1s;flex-shrink:0}
+.cbtn:hover{color:var(--accent2);border-color:var(--accent2)}.cbtn.ok{opacity:1!important;color:var(--accent2);border-color:var(--accent2)}
 
-  /* Results */
-  .results-container {
-    flex: 1;
-    overflow: hidden;
-    position: relative;
-  }
-  .results-list {
-    height: 100%;
-    overflow-y: auto;
-    padding: 0;
-  }
+.logbar{border-top:1px solid var(--border);background:var(--bg2);font-family:var(--mono);font-size:10px;color:var(--muted);height:0;overflow:hidden;transition:height .25s;flex-shrink:0}
+.logbar.on{height:75px;overflow-y:auto;padding:5px 12px}
+.lline{line-height:1.7}.lline.ok{color:var(--accent2)}.lline.err{color:var(--danger)}.lline.info{color:var(--accent)}.lline.warn{color:var(--warn)}
+.logtog{display:flex;align-items:center;gap:5px;padding:3px 12px;background:var(--bg2);border-top:1px solid var(--border);cursor:pointer;font-family:var(--mono);font-size:9px;color:var(--muted);user-select:none;flex-shrink:0;transition:color .15s}
+.logtog:hover{color:var(--text)}
+.arr{transition:transform .25s}.logtog.on .arr{transform:rotate(180deg)}
+.toast{position:fixed;bottom:18px;right:18px;background:var(--bg3);border:1px solid var(--accent2);color:var(--accent2);font-family:var(--mono);font-size:11px;padding:7px 14px;border-radius:4px;z-index:99999;opacity:0;transition:opacity .25s;pointer-events:none}
+.toast.on{opacity:1}
 
-  /* Empty state */
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    gap: 12px;
-    color: var(--muted);
-    font-family: var(--mono);
-  }
-  .empty-ascii {
-    font-size: 11px;
-    line-height: 1.4;
-    text-align: center;
-    opacity: .5;
-  }
-  .empty-msg { font-size: 13px; }
-
-  /* Result rows */
-  .result-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 7px 14px;
-    border-bottom: 1px solid var(--border);
-    font-family: var(--mono);
-    font-size: 12px;
-    transition: background .15s;
-    animation: fadeIn .2s ease;
-    cursor: pointer;
-  }
-  .result-row:hover { background: var(--bg3); }
-  .result-row:hover .copy-btn { opacity: 1; }
-  .result-cat-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-  .result-cat-dot.ep   { background: var(--ep); }
-  .result-cat-dot.url  { background: var(--url); }
-  .result-cat-dot.sec  { background: var(--sec); }
-  .result-cat-dot.mail { background: var(--mail); }
-  .result-cat-dot.file { background: var(--file); }
-  .result-badge {
-    font-family: var(--mono);
-    font-size: 9px;
-    font-weight: bold;
-    padding: 2px 5px;
-    border-radius: 3px;
-    flex-shrink: 0;
-    letter-spacing: .06em;
-    opacity: .85;
-  }
-  .result-badge.ep     { background: #00d4ff22; color: var(--ep); }
-  .result-badge.url    { background: #7b9fff22; color: var(--url); }
-  .result-badge.sec    { background: #ff336622; color: var(--sec); }
-  .result-badge.cred   { background: #ff9f4322; color: var(--cred); }
-  .result-badge.unauth { background: #ee5a2422; color: var(--unauth); }
-  .result-badge.mail   { background: #ffd16622; color: var(--mail); }
-  .result-badge.file   { background: #b06fff22; color: var(--file); }
-  .result-value {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: var(--text);
-  }
-  .result-source {
-    color: var(--muted);
-    font-size: 10px;
-    flex-shrink: 0;
-    max-width: 140px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .copy-btn {
-    background: none; border: 1px solid var(--border2);
-    color: var(--text2); font-family: var(--mono); font-size: 10px;
-    padding: 2px 7px; border-radius: 3px; cursor: pointer;
-    opacity: 0; transition: opacity .15s, border-color .15s, color .15s;
-    flex-shrink: 0;
-  }
-  .copy-btn:hover { border-color: var(--accent2); color: var(--accent2); }
-  .copy-btn.copied { color: var(--accent2); border-color: var(--accent2); opacity: 1 !important; }
-
-  /* Source group header */
-  .source-header {
-    display: flex; align-items: center; gap: 8px;
-    padding: 6px 14px 5px;
-    background: #0d1318cc;
-    border-bottom: 1px solid var(--border);
-    position: sticky; top: 0; z-index: 2;
-    font-family: var(--mono); font-size: 11px;
-    color: var(--text2);
-    backdrop-filter: blur(4px);
-  }
-  .source-header .src-icon { color: var(--accent2); }
-
-  /* Scrollbar styling */
-  ::-webkit-scrollbar { width: 5px; height: 5px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
-
-  /* Animations */
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-  @keyframes spin  { to { transform: rotate(360deg); } }
-
-  /* Toast */
-  .toast {
-    position: fixed; bottom: 20px; right: 20px;
-    background: var(--bg3);
-    border: 1px solid var(--accent2);
-    color: var(--accent2);
-    font-family: var(--mono);
-    font-size: 12px;
-    padding: 8px 16px;
-    border-radius: 5px;
-    z-index: 10000;
-    opacity: 0;
-    transition: opacity .3s;
-    pointer-events: none;
-  }
-  .toast.show { opacity: 1; }
-
-  /* Log console */
-  .log-console {
-    border-top: 1px solid var(--border);
-    background: var(--bg2);
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--muted);
-    padding: 0;
-    height: 0;
-    overflow: hidden;
-    transition: height .3s ease;
-    flex-shrink: 0;
-  }
-  .log-console.open { height: 80px; overflow-y: auto; padding: 6px 14px; }
-  .log-line { line-height: 1.6; }
-  .log-line.ok  { color: var(--accent2); }
-  .log-line.err { color: var(--danger); }
-  .log-line.info { color: var(--accent); }
-
-  .toggle-log {
-    display: flex; align-items: center; gap: 6px;
-    padding: 4px 14px;
-    background: var(--bg2);
-    border-top: 1px solid var(--border);
-    cursor: pointer;
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--muted);
-    user-select: none;
-    flex-shrink: 0;
-    transition: color .2s;
-  }
-  .toggle-log:hover { color: var(--text); }
-  .toggle-log .arrow { transition: transform .3s; }
-  .toggle-log.open .arrow { transform: rotate(180deg); }
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
 
-<!-- HEADER -->
 <header>
   <div>
-    <div class="logo">JS<span>_</span>ANALYZER</div>
-    <div class="logo-sub">recon · extract · discover</div>
+    <div class="logo">JS<span>_</span>ANALYZER <span style="font-size:12px;color:var(--accent2)">v2</span></div>
+    <div class="logo-sub">recon · extract · entropy · cloud · discover</div>
   </div>
-  <div class="header-stats">
-    <div class="stat-pill ep zero" id="stat-ep"><div class="dot"></div><span id="cnt-ep">0</span> endpoints</div>
-    <div class="stat-pill url zero" id="stat-url"><div class="dot"></div><span id="cnt-url">0</span> urls</div>
-    <div class="stat-pill sec zero" id="stat-sec"><div class="dot"></div><span id="cnt-sec">0</span> secrets</div>
-    <div class="stat-pill cred zero" id="stat-cred"><div class="dot"></div><span id="cnt-cred">0</span> creds</div>
-    <div class="stat-pill unauth zero" id="stat-unauth"><div class="dot"></div><span id="cnt-unauth">0</span> no-auth</div>
-    <div class="stat-pill mail zero" id="stat-mail"><div class="dot"></div><span id="cnt-mail">0</span> emails</div>
-    <div class="stat-pill file zero" id="stat-file"><div class="dot"></div><span id="cnt-file">0</span> files</div>
+  <div class="hstats">
+    <div class="pill ep zero" id="p-ep"><div class="dot"></div><span id="c-ep">0</span> ep</div>
+    <div class="pill url zero" id="p-url"><div class="dot"></div><span id="c-url">0</span> urls</div>
+    <div class="pill sec zero" id="p-sec"><div class="dot"></div><span id="c-sec">0</span> secrets</div>
+    <div class="pill cred zero" id="p-cred"><div class="dot"></div><span id="c-cred">0</span> creds</div>
+    <div class="pill unauth zero" id="p-unauth"><div class="dot"></div><span id="c-unauth">0</span> noauth</div>
+    <div class="pill entropy zero" id="p-entropy"><div class="dot"></div><span id="c-entropy">0</span> entropy</div>
+    <div class="pill mail zero" id="p-mail"><div class="dot"></div><span id="c-mail">0</span> emails</div>
+    <div class="pill file zero" id="p-file"><div class="dot"></div><span id="c-file">0</span> files</div>
+    <div class="pill cloud zero" id="p-cloud"><div class="dot"></div><span id="c-cloud">0</span> cloud</div>
   </div>
 </header>
 
-<!-- PROGRESS -->
-<div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+<div class="progress-bar"><div class="progress-fill" id="pbar"></div></div>
 
-<!-- MAIN -->
 <div class="main">
-
-  <!-- LEFT PANEL -->
-  <div class="left-panel">
-
-    <div class="section-title">📡 Remote URLs</div>
+  <div class="left">
+    <div class="stitle">📡 Remote URLs</div>
     <div class="url-area">
-      <div class="url-input-row">
-        <input type="text" id="url-input" placeholder="https://example.com/app.js" />
-        <button class="btn-add" onclick="addUrl()">+ ADD</button>
+      <div class="url-row">
+        <input type="text" id="urlinput" placeholder="https://example.com/app.js" />
+        <button class="btn-add" id="urladd">+ADD</button>
       </div>
-      <div class="url-list" id="url-list"></div>
+      <div class="url-list" id="urllist"></div>
     </div>
 
-    <div class="section-title">📁 Local Files</div>
+    <div class="stitle">📁 Local JS Files</div>
     <div class="upload-area">
-      <div class="drop-zone" id="drop-zone">
-        <input type="file" id="file-input" multiple accept=".js,.mjs,.ts,.jsx,.txt" onchange="handleFiles(this.files)">
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="fileinput" multiple accept=".js,.mjs,.ts,.jsx,.tsx,.txt,.html,.htm,.map">
         <div class="drop-icon">⬆</div>
-        <div class="drop-text">Drop <span>.js</span> files here or <span>click</span></div>
+        <div class="drop-txt">Drop files or <b>click to browse</b><br><span style="font-size:9px;color:var(--muted)">JS · HTML · .map · No size limit</span></div>
       </div>
-      <div class="file-list" id="file-list"></div>
+      <div class="file-list" id="filelist"></div>
     </div>
 
-    <div class="section-title">🔍 Filters</div>
-    <div class="filter-section">
-      <div class="filter-label">Show categories</div>
-      <div class="filter-chips">
-        <div class="chip ep"   data-cat="endpoints" onclick="toggleChip(this)">Endpoints</div>
-        <div class="chip url"  data-cat="urls"      onclick="toggleChip(this)">URLs</div>
-        <div class="chip sec"  data-cat="secrets"   onclick="toggleChip(this)">Secrets</div>
-        <div class="chip mail" data-cat="emails"    onclick="toggleChip(this)">Emails</div>
-        <div class="chip file" data-cat="files"     onclick="toggleChip(this)">Files</div>
-        <div class="chip cred" data-cat="creds"     onclick="toggleChip(this)">Credentials</div>
-        <div class="chip unauth" data-cat="unauth"  onclick="toggleChip(this)">No-Auth Routes</div>
+    <div class="stitle">🔍 Category Filters</div>
+    <div class="filter-area">
+      <div class="chips">
+        <div class="chip ep"      data-cat="endpoints">Endpoints</div>
+        <div class="chip url"     data-cat="urls">URLs</div>
+        <div class="chip sec"     data-cat="secrets">Secrets</div>
+        <div class="chip mail"    data-cat="emails">Emails</div>
+        <div class="chip file"    data-cat="files">Files</div>
+        <div class="chip cred"    data-cat="creds">Credentials</div>
+        <div class="chip unauth"  data-cat="unauth">No-Auth</div>
+        <div class="chip entropy" data-cat="entropy">High-Entropy</div>
+        <div class="chip cloud"   data-cat="cloud">Cloud Buckets</div>
+      </div>
+    </div>
+
+    <div class="stitle">🧬 Entropy Threshold</div>
+    <div class="entropy-area">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.6">
+        Shannon entropy filter for high-entropy strings.<br>Higher = fewer but more likely real secrets.
+      </div>
+      <div class="entropy-row">
+        <label>Min H(x):</label>
+        <input type="range" id="entropy-thresh" min="3.0" max="6.0" step="0.1" value="4.5">
+        <span class="entropy-val" id="entropy-val">4.5</span>
+      </div>
+      <div class="entropy-row" style="margin-top:4px">
+        <label>Min len:</label>
+        <input type="range" id="entropy-minlen" min="16" max="64" step="4" value="20">
+        <span class="entropy-val" id="entropy-lenval">20</span>
       </div>
     </div>
 
     <div class="actions">
-      <button class="btn-scan" id="scan-btn" onclick="startScan()">⚡ ANALYZE ALL</button>
+      <button class="btn-scan" id="scanbtn">⚡ ANALYZE ALL</button>
       <div class="btn-row">
-        <button class="btn-sm" onclick="clearAll()">✕ Clear</button>
-        <button class="btn-sm" onclick="exportJSON()">⬇ Export JSON</button>
-        <button class="btn-sm" onclick="exportTXT()">⬇ Export TXT</button>
+        <button class="btn-sm" id="clearbtn">✕ Clear</button>
+        <button class="btn-sm" id="expjson">⬇ JSON</button>
+        <button class="btn-sm" id="exptxt">⬇ TXT</button>
       </div>
     </div>
-
   </div>
 
-  <!-- RIGHT PANEL -->
-  <div class="right-panel">
-
-    <div class="search-bar">
-      <span class="search-icon">⌕</span>
-      <input type="text" id="search-input" placeholder="Filter results..." oninput="renderResults()" />
-      <select class="source-select" id="source-select" onchange="renderResults()">
-        <option value="all">All Sources</option>
+  <div class="right">
+    <div class="searchbar">
+      <input type="text" id="search" placeholder="Search results…" />
+      <select class="src-sel" id="srcsel"><option value="all">All Sources</option></select>
+      <select class="src-sel" id="confsel">
+        <option value="all">All Confidence</option>
+        <option value="high">High</option>
+        <option value="med">Medium</option>
+        <option value="low">Low</option>
       </select>
-      <button class="copy-all-btn" onclick="copyAllVisible()">⎘ Copy All</button>
-      <button class="export-btn" onclick="exportGrep()">⬇ Grep List</button>
+      <button class="tbtn" id="copyall">⎘ Copy All</button>
+      <button class="tbtn" id="expgrep">⬇ Grep</button>
     </div>
 
     <div class="tabs" id="tabs">
-      <div class="tab active ep"   data-tab="all"       onclick="switchTab(this)">ALL <span class="tab-count" id="tc-all">0</span></div>
-      <div class="tab ep"          data-tab="endpoints" onclick="switchTab(this)">ENDPOINTS <span class="tab-count" id="tc-endpoints">0</span></div>
-      <div class="tab url"         data-tab="urls"      onclick="switchTab(this)">URLS <span class="tab-count" id="tc-urls">0</span></div>
-      <div class="tab sec"         data-tab="secrets"   onclick="switchTab(this)">SECRETS <span class="tab-count" id="tc-secrets">0</span></div>
-      <div class="tab cred"        data-tab="creds"     onclick="switchTab(this)">CREDS <span class="tab-count" id="tc-creds">0</span></div>
-      <div class="tab unauth"      data-tab="unauth"    onclick="switchTab(this)">NO-AUTH <span class="tab-count" id="tc-unauth">0</span></div>
-      <div class="tab mail"        data-tab="emails"    onclick="switchTab(this)">EMAILS <span class="tab-count" id="tc-emails">0</span></div>
-      <div class="tab file"        data-tab="files"     onclick="switchTab(this)">FILES <span class="tab-count" id="tc-files">0</span></div>
+      <div class="tab active ep"    data-tab="all">ALL <span class="tab-n" id="tn-all">0</span></div>
+      <div class="tab ep"           data-tab="endpoints">EP <span class="tab-n" id="tn-endpoints">0</span></div>
+      <div class="tab url"          data-tab="urls">URL <span class="tab-n" id="tn-urls">0</span></div>
+      <div class="tab sec"          data-tab="secrets">SEC <span class="tab-n" id="tn-secrets">0</span></div>
+      <div class="tab cred"         data-tab="creds">CRED <span class="tab-n" id="tn-creds">0</span></div>
+      <div class="tab unauth"       data-tab="unauth">OPEN <span class="tab-n" id="tn-unauth">0</span></div>
+      <div class="tab entropy"      data-tab="entropy">ENTROPY <span class="tab-n" id="tn-entropy">0</span></div>
+      <div class="tab mail"         data-tab="emails">MAIL <span class="tab-n" id="tn-emails">0</span></div>
+      <div class="tab file"         data-tab="files">FILE <span class="tab-n" id="tn-files">0</span></div>
+      <div class="tab cloud"        data-tab="cloud">CLOUD <span class="tab-n" id="tn-cloud">0</span></div>
     </div>
 
-    <div class="results-container">
-      <div class="results-list" id="results-list">
-        <div class="empty-state">
-          <div class="empty-ascii">
-░░░░░░░░░░░░░░░░░░░░░░░░<br>
-░  ADD JS URLS OR FILES ░<br>
-░  THEN HIT ANALYZE    ░<br>
-░░░░░░░░░░░░░░░░░░░░░░░░
-          </div>
-          <div class="empty-msg">Waiting for input…</div>
+    <div class="scanbar" id="scanbar">
+      <div class="spin"></div>
+      <span id="scanmsg">Scanning…</span>
+    </div>
+
+    <div class="rlist-wrap">
+      <div class="rlist" id="rlist">
+        <div class="empty">
+          <pre>░░░░░░░░░░░░░░░░░░░░░░░░
+░  ADD JS URLS OR FILES ░
+░  THEN HIT ANALYZE    ░
+░░░░░░░░░░░░░░░░░░░░░░░░</pre>
+          <span>Waiting for input…</span>
         </div>
       </div>
     </div>
 
-    <div class="toggle-log" id="toggle-log" onclick="toggleLog()">
-      <span class="arrow">▲</span>
-      <span id="log-label">Console (0)</span>
-    </div>
-    <div class="log-console" id="log-console"></div>
-
+    <div class="logtog" id="logtog"><span class="arr">▲</span><span id="loglabel">Console (0)</span></div>
+    <div class="logbar" id="logbar"></div>
   </div>
 </div>
 
-<!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <script>
-// ═══════════════════════════════════════════════════════
+'use strict';
+
+// ══════════════════════════════════════════════════════
 //  STATE
-// ═══════════════════════════════════════════════════════
-let urlSources    = [];
-let fileSources   = [];
-let allFindings   = [];
-let seen          = new Set();
-let activeTab     = 'all';
-let activeFilters = new Set(['endpoints','urls','secrets','creds','unauth','emails','files']);
-let logLines      = 0;
+// ══════════════════════════════════════════════════════
+const S = {
+  urlSources   : [],
+  fileSources  : [],
+  findings     : [],
+  seen         : new Set(),
+  activeTab    : 'all',
+  filters      : new Set(['endpoints','urls','secrets','creds','unauth','emails','files','entropy','cloud']),
+  confFilter   : 'all',
+  scanning     : false,
+  cancelFlag   : false,
+  uid          : 0,
+  logCount     : 0,
+  renderPending: false,
+  entropyThresh: 4.5,
+  entropyMinLen: 20,
+};
 
-// ═══════════════════════════════════════════════════════
-//  PATTERNS
-// ═══════════════════════════════════════════════════════
-
-// ── Generic path pattern: any quoted /word/... path with 2+ segments ──────────
-// This catches ALL custom paths like /sdds/, /xyz/v2/, /internal123/ etc.
-const GENERIC_PATH_RE = /["'`](\/[a-zA-Z0-9_~.-][a-zA-Z0-9_~./-]*\/[a-zA-Z0-9_~./-]{1,})[`"']/g;
-
-// High-value named endpoint patterns (kept for priority tagging)
-const NAMED_ENDPOINT_PATTERNS = [
-  /["'`]((?:https?:)?\/\/[^"'`\s]+\/(?:api|rest|graphql|v\d+)\/[a-zA-Z0-9/_-]+)[`"']/gi,
-  /["'`](\/api\/[a-zA-Z0-9/_.-]{2,})[`"']/gi,
-  /["'`](\/v\d+\/[a-zA-Z0-9/_.-]{2,})[`"']/gi,
-  /["'`](\/rest\/[a-zA-Z0-9/_.-]{2,})[`"']/gi,
-  /["'`](\/graphql[a-zA-Z0-9/_.-]*)[`"']/gi,
-  /["'`](\/oauth[0-9]*\/[a-zA-Z0-9/_-]+)[`"']/gi,
-  /["'`](\/auth[a-zA-Z0-9/_-]*)[`"']/gi,
-  /["'`](\/login[a-zA-Z0-9/_-]*)[`"']/gi,
-  /["'`](\/logout[a-zA-Z0-9/_-]*)[`"']/gi,
-  /["'`](\/token[a-zA-Z0-9/_-]*)[`"']/gi,
-  /["'`](\/admin[a-zA-Z0-9/_-]*)[`"']/gi,
-  /["'`](\/dashboard[a-zA-Z0-9/_-]*)[`"']/gi,
-  /["'`](\/internal[a-zA-Z0-9/_-]*)[`"']/gi,
-  /["'`](\/debug[a-zA-Z0-9/_-]*)[`"']/gi,
-  /["'`](\/config[a-zA-Z0-9/_-]*)[`"']/gi,
-  /["'`](\/backup[a-zA-Z0-9/_-]*)[`"']/gi,
-  /["'`](\/private[a-zA-Z0-9/_-]*)[`"']/gi,
-  /["'`](\/upload[a-zA-Z0-9/_-]*)[`"']/gi,
-  /["'`](\/download[a-zA-Z0-9/_-]*)[`"']/gi,
-  /["'`](\/\.well-known\/[a-zA-Z0-9/_-]+)[`"']/gi,
-  /["'`](\/idp\/[a-zA-Z0-9/_-]+)[`"']/gi,
-  /["'`](\/user[a-zA-Z0-9/_-]*)[`"']/gi,
-  /["'`](\/account[a-zA-Z0-9/_-]*)[`"']/gi,
-  /["'`](\/profile[a-zA-Z0-9/_-]*)[`"']/gi,
-  /["'`](\/settings[a-zA-Z0-9/_-]*)[`"']/gi,
-  /["'`](\/search[a-zA-Z0-9/_-]*)[`"']/gi,
-  /["'`](\/order[a-zA-Z0-9/_-]*)[`"']/gi,
-  /["'`](\/payment[a-zA-Z0-9/_-]*)[`"']/gi,
-  /["'`](\/webhook[a-zA-Z0-9/_-]*)[`"']/gi,
-  /["'`](\/health[a-zA-Z0-9/_-]*)[`"']/gi,
-  /["'`](\/status[a-zA-Z0-9/_-]*)[`"']/gi,
-  /["'`](\/metrics[a-zA-Z0-9/_-]*)[`"']/gi,
-  /["'`](\/actuator[a-zA-Z0-9/_-]*)[`"']/gi,
-  /["'`](\/swagger[a-zA-Z0-9/_-]*)[`"']/gi,
-  /["'`](\/openapi[a-zA-Z0-9/_-]*)[`"']/gi,
-  /["'`](\/docs[a-zA-Z0-9/_-]*)[`"']/gi,
-];
-
-// ── Template literal URLs: fetch(`${base}/some/path`) ────────────────────────
-const TEMPLATE_PATH_RE = /`[^`]*?\$\{[^}]+\}([/][a-zA-Z0-9/_.-]{2,})[^`]*`/g;
-
-// ── fetch() / axios / XHR call patterns ──────────────────────────────────────
-const FETCH_CALL_PATTERNS = [
-  /fetch\s*\(\s*["'`](\/[a-zA-Z0-9/_.-]{3,})["'`]/g,
-  /axios\s*\.\s*(?:get|post|put|patch|delete|head)\s*\(\s*["'`](\/[a-zA-Z0-9/_.-]{3,})["'`]/gi,
-  /\$(?:http|resource)\s*\.\s*(?:get|post|put|patch|delete)\s*\(\s*["'`](\/[a-zA-Z0-9/_.-]{3,})["'`]/gi,
-  /(?:url|endpoint|path|route|href|action)\s*[:=]\s*["'`](\/[a-zA-Z0-9/_.-]{3,})["'`]/gi,
-  /(?:url|endpoint|path|route)\s*\+\s*["'`](\/[a-zA-Z0-9/_.-]{2,})["'`]/gi,
-  /["'`](\/[a-zA-Z0-9_-]{2,}(?:\/[a-zA-Z0-9_:-]{1,}){1,})["'`]/g,
-];
-
-const URL_PATTERNS = [
-  /["'`](https?:\/\/[^\s"'`<>{]{10,})[`"']/g,
-  /["'`](wss?:\/\/[^\s"'`<>{]{10,})[`"']/g,
-  /["'`](sftp:\/\/[^\s"'`<>{]{10,})[`"']/g,
-  /(https?:\/\/[a-zA-Z0-9.-]+\.s3[a-zA-Z0-9.-]*\.amazonaws\.com[^\s"'<>]*)/g,
-  /(https?:\/\/[a-zA-Z0-9.-]+\.blob\.core\.windows\.net[^\s"'<>]*)/g,
-  /(https?:\/\/storage\.googleapis\.com\/[^\s"'<>]*)/g,
-  /https:\/\/[a-z0-9-]+\.firebaseio\.com/g,
-  /(https?:\/\/[a-zA-Z0-9-]+\.execute-api\.[a-z0-9-]+\.amazonaws\.com[^\s"'<>]*)/g,
-];
-
-// ── Credential / password patterns ───────────────────────────────────────────
-const CRED_PATTERNS = [
-  [/(?:password|passwd|pwd)\s*[:=]\s*["'`]([^"'`\s]{4,})["'`]/gi,           "password"],
-  [/(?:secret|client_secret)\s*[:=]\s*["'`]([^"'`\s]{6,})["'`]/gi,          "secret"],
-  [/(?:api_?key|apikey)\s*[:=]\s*["'`]([^"'`\s]{8,})["'`]/gi,               "api_key"],
-  [/(?:auth_?token|authtoken)\s*[:=]\s*["'`]([^"'`\s]{8,})["'`]/gi,         "auth_token"],
-  [/(?:access_?token|accesstoken)\s*[:=]\s*["'`]([^"'`\s]{8,})["'`]/gi,     "access_token"],
-  [/(?:bearer)\s*[:=]\s*["'`]([^"'`\s]{8,})["'`]/gi,                        "bearer"],
-  [/(?:private_?key|privatekey)\s*[:=]\s*["'`]([^"'`\s]{8,})["'`]/gi,       "private_key"],
-  [/(?:encryption_?key)\s*[:=]\s*["'`]([^"'`\s]{8,})["'`]/gi,               "encryption_key"],
-  [/(?:database_?url|db_?url|db_?uri)\s*[:=]\s*["'`]([^"'`\s]{8,})["'`]/gi, "db_url"],
-  [/(?:connection_?string)\s*[:=]\s*["'`]([^"'`\s]{8,})["'`]/gi,            "conn_string"],
-  [/(?:smtp_?pass|mail_?pass)\s*[:=]\s*["'`]([^"'`\s]{4,})["'`]/gi,         "mail_password"],
-  [/(?:consumer_?key|consumer_?secret)\s*[:=]\s*["'`]([^"'`\s]{8,})["'`]/gi,"consumer_key"],
-  [/(?:app_?secret|appsecret)\s*[:=]\s*["'`]([^"'`\s]{8,})["'`]/gi,         "app_secret"],
-  [/["'`](?:x-api-key|x-auth-token|x-secret-key)["'`]\s*:\s*["'`]([^"'`\s]{6,})["'`]/gi, "header_cred"],
-  // Hardcoded basic auth
-  [/Basic\s+([A-Za-z0-9+/]{20,}={0,2})/g,                                   "Basic Auth"],
-  // AWS-style env vars
-  [/AWS_SECRET_ACCESS_KEY\s*[:=]\s*["'`]?([A-Za-z0-9/+=]{40})["'`]?/g,     "AWS Secret"],
-  [/AWS_ACCESS_KEY_ID\s*[:=]\s*["'`]?(AKIA[0-9A-Z]{16})["'`]?/g,           "AWS Key ID"],
-];
-
-// ── Secret / token patterns ───────────────────────────────────────────────────
-const SECRET_PATTERNS = [
-  [/(AKIA[0-9A-Z]{16})/g,                                                    "AWS Key"],
-  [/(AIza[0-9A-Za-z\-_]{35})/g,                                              "Google API"],
-  [/(sk_live_[0-9a-zA-Z]{24,})/g,                                            "Stripe Live"],
-  [/(ghp_[0-9a-zA-Z]{36})/g,                                                 "GitHub PAT"],
-  [/(xox[baprs]-[0-9a-zA-Z\-]{10,48})/g,                                    "Slack Token"],
-  [/(eyJ[A-Za-z0-9_\-]{10,}\.eyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]+)/g,  "JWT"],
-  [/(-----BEGIN (?:RSA |EC )?PRIVATE KEY-----)/g,                            "Private Key"],
-  [/(mongodb(?:\+srv)?:\/\/[^\s"'<>]+)/g,                                    "MongoDB"],
-  [/(postgres(?:ql)?:\/\/[^\s"'<>]+)/g,                                      "PostgreSQL"],
-  [/(mysql:\/\/[a-z0-9._%+\-]+:[^\s:@]+@[^\s"'?]+)/g,                      "MySQL URI"],
-  [/\b(ya29\.[a-z0-9_\-]{30,})\b/g,                                         "Google OAuth2"],
-  [/\d{9}:[a-zA-Z0-9_\-]{35}/g,                                             "Telegram Bot"],
-  [/lin_api_[a-zA-Z0-9]{40}/g,                                              "Linear API"],
-  [/dop_v1_[a-z0-9]{64}/g,                                                   "DigitalOcean"],
-  [/SK[0-9a-fA-F]{32}/g,                                                     "Twilio"],
-  [/SG\.[\w\d\-_]{22}\.[\w\d\-_]{43}/g,                                     "SendGrid"],
-  [/glpat-[0-9a-zA-Z\-_]{20}/g,                                             "GitLab Token"],
-  [/shpat_[0-9a-fA-F]{32}/g,                                                 "Shopify"],
-  [/NRII-[a-zA-Z0-9]{20,}/g,                                                 "New Relic"],
-  [/(EAACEdEose0cBA[A-Z0-9]{20,})\b/g,                                      "Facebook Token"],
-  [/\b(sgp_[A-Z0-9_\-]{60,70})\b/g,                                         "Segment Token"],
-];
-
-// ── Unauthenticated / no-auth route patterns ─────────────────────────────────
-// These look for code patterns that suggest a route requires NO authentication
-const UNAUTH_PATTERNS = [
-  // requiresAuth: false / isPublic: true / allowAnonymous
-  [/(?:requiresAuth|requireAuth|authenticated|needsAuth)\s*:\s*false/gi,     "requiresAuth:false"],
-  [/(?:isPublic|public|openAccess)\s*:\s*true/gi,                            "isPublic:true"],
-  [/allowAnonymous\s*(?:[:=]\s*true|\(\))/gi,                                "allowAnonymous"],
-  [/permitAll\s*\(\s*\)/gi,                                                   "permitAll()"],
-  [/\.anonymous\s*\(\s*\)/gi,                                                 ".anonymous()"],
-  [/noauth|no_auth|no-auth/gi,                                               "no-auth flag"],
-  // Express/Node: router.get('/path') without auth middleware nearby
-  [/router\s*\.\s*(?:get|post|put|patch|delete)\s*\(\s*["'`](\/[a-zA-Z0-9/_-]{2,})["'`]\s*,\s*(?!.*(?:auth|jwt|verify|protect|guard|middleware|isLoggedIn|requireLogin))[^)]{0,60}\)/gi, "route:no-middleware"],
-  // @PermitAll / @Public annotations (Java/Spring)
-  [/@(?:PermitAll|Public|Unsecured|AllowAll)\b/g,                            "@PermitAll"],
-  // [AllowAnonymous] .NET
-  [/\[AllowAnonymous\]/g,                                                     "[AllowAnonymous]"],
-  // skipAuth / bypassAuth
-  [/(?:skipAuth|bypassAuth|ignoreAuth)\s*[:=]\s*true/gi,                     "skipAuth:true"],
-  // Passport: passport.authenticate with {session:false} and no failure handling
-  [/authenticate\s*\(\s*["']anonymous["']/gi,                                "anonymous strategy"],
-  // Middleware skip: if(!token) return next() instead of 401
-  [/if\s*\(\s*!(?:token|auth|jwt|session|user|req\.user)\s*\)\s*(?:return\s+)?next\s*\(\s*\)/gi, "auth-skip:next()"],
-  // CORS allow all + no auth check pattern
-  [/Access-Control-Allow-Origin['":\s]+\*[^]*?(?:no|without|skip).*?auth/gi, "CORS:*+no-auth"],
-  // Vue/React router: meta: { requiresAuth: false }
-  [/meta\s*:\s*\{[^}]*(?:requiresAuth|auth|protected)\s*:\s*false/gi,       "router-meta:no-auth"],
-  // Unprotected swagger / openapi
-  [/swagger-ui\.html|api-docs|\/openapi\.json/gi,                            "exposed-apidocs"],
-  // health/metrics typically unauthed
-  [/['"](\/health(?:check)?|\/ping|\/ready|\/alive|\/metrics|\/actuator\/health|\/status)['"]/gi, "unauth-health-endpoint"],
-];
-
-const EMAIL_PATTERN = /([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,6})/g;
-const FILE_PATTERN  = /["'`]([a-zA-Z0-9_/.\-]+\.(?:sql|csv|xlsx|xls|json|xml|yaml|yml|txt|log|conf|config|cfg|ini|env|bak|backup|old|orig|copy|key|pem|crt|cer|p12|pfx|doc|docx|pdf|zip|tar|gz|rar|7z|sh|bat|ps1|py|rb|pl))[`"']/gi;
-
-// ═══════════════════════════════════════════════════════
-//  NOISE FILTERS
-// ═══════════════════════════════════════════════════════
-const NOISE_DOMAINS = new Set(['www.w3.org','schemas.openxmlformats.org','schemas.microsoft.com','purl.org','openoffice.org','ns.adobe.com','example.com','test.com','localhost','127.0.0.1','npmjs.org','registry.npmjs.org']);
-const NOISE_STRINGS = new Set(['http://','https://','/a','/P','/R','/V','/W','zone.js','bn.js','hash.js','md5.js','sha.js']);
-const PATH_NOISE_RE = [
-  /^\.\.\?/,/^[a-z]{2}(-[a-z]{2})?\.js$/,/^[a-z]{2}(-[a-z]{2})?$/,
-  /^sha\d*$/,/^aes$|^des$|^md5$/,/^\d+ \d+ R$/,
-  /^xl\//,/^webpack/,/^\+/,/^\$\{/,/^#/,/^\/[a-zA-Z]$/,/^http:\/\/$/,/_ngcontent/,
-  // Extra noise: pure static asset paths
-  /\.(png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|css|map)$/i,
-  // Single segment with no real meaning
-  /^\/[a-zA-Z]{1,2}$/,
-  // Version numbers only
-  /^\/\d+(\.\d+)*$/,
-  // Repeated slashes / just root
-  /^\/+$/,
-  // CSS class-like
-  /^\/[a-z]+-[a-z]+-/,
-];
-// Static file extensions to skip as paths
-const STATIC_EXTS = new Set(['.js','.jsx','.ts','.tsx','.css','.scss','.less','.png','.jpg','.gif','.svg','.ico','.woff','.ttf','.eot','.map','.html','.htm']);
-
-function isValidPath(v) {
-  if (!v || v.length < 4) return false;
-  if (NOISE_STRINGS.has(v)) return false;
-  if (PATH_NOISE_RE.some(r => r.test(v))) return false;
-  if (!v.startsWith('/')) return false;
-  // Must have at least 2 real path segments
-  const segs = v.split('/').filter(s => s.length > 0);
-  if (segs.length < 1) return false;
-  // Reject if only static file extensions
-  const last = '/' + (segs[segs.length-1] || '');
-  if (STATIC_EXTS.has(last.match(/\.[a-z]+$/i)?.[0] || '')) return false;
-  // Reject very short single segments unless they look meaningful
-  if (segs.length === 1 && segs[0].length < 3) return false;
-  // Reject webpack chunk names
-  if (/chunk|bundle|vendor|polyfill|runtime|manifest/i.test(v)) return false;
-  // Reject node module paths
-  if (v.includes('node_modules')) return false;
-  return true;
-}
-
-function isValidUrl(v) {
-  if (!v || v.length < 15) return false;
-  const vl = v.toLowerCase();
-  for (const d of NOISE_DOMAINS) if (vl.includes(d)) return false;
-  if (v.includes('{') || vl.includes('undefined') || vl.includes('null')) return false;
-  if (vl.startsWith('data:')) return false;
-  if (['.css','.png','.jpg','.gif','.svg','.woff','.ttf'].some(e=>vl.endsWith(e))) return false;
-  return true;
-}
-function isValidSecret(v) {
-  if (!v || v.length < 10) return false;
-  const vl = v.toLowerCase();
-  if (['example','placeholder','your_','xxxx','test','<','>','${'].some(x=>vl.includes(x))) return false;
-  return true;
-}
-function isValidCred(v) {
-  if (!v || v.length < 4) return false;
-  const vl = v.toLowerCase();
-  // Skip obvious placeholders
-  if (['example','placeholder','your','xxxx','test','changeme','undefined','null','<insert','password123','admin123','secret123'].some(x=>vl.includes(x))) return false;
-  if (v.startsWith('${') || v.startsWith('{{')) return false;
-  // Must not be just a variable reference
-  if (/^[a-zA-Z_$][a-zA-Z0-9_$.]*$/.test(v)) return false;
-  return true;
-}
-function isValidEmail(v) {
-  if (!v || !v.includes('@')) return false;
-  const dom = v.split('@').pop().toLowerCase();
-  if (['example.com','test.com','domain.com'].includes(dom)) return false;
-  if (['example','test','placeholder','noreply'].some(x=>v.toLowerCase().includes(x))) return false;
-  return true;
-}
-function isValidFile(v) {
-  if (!v || v.length < 3) return false;
-  const vl = v.toLowerCase();
-  if (['package.json','tsconfig.json','webpack','babel','eslint','node_modules','.min.','polyfill','vendor','chunk','bundle'].some(x=>vl.includes(x))) return false;
-  if (vl.endsWith('.map')) return false;
-  if (vl.endsWith('.json') && v.split('/').pop().length <= 7) return false;
-  return true;
-}
-
-// ═══════════════════════════════════════════════════════
-//  ANALYZE
-// ═══════════════════════════════════════════════════════
-function analyzeContent(content, sourceName) {
-  const findings = [];
-  function add(cat, value) {
-    const key = cat + ':' + value;
-    if (seen.has(key)) return;
-    seen.add(key);
-    findings.push({category: cat, value, source: sourceName});
+// ══════════════════════════════════════════════════════
+//  SHANNON ENTROPY
+// ══════════════════════════════════════════════════════
+function shannonEntropy(str) {
+  if (!str || str.length < 4) return 0;
+  const freq = {};
+  for (const c of str) freq[c] = (freq[c] || 0) + 1;
+  const len = str.length;
+  let h = 0;
+  for (const count of Object.values(freq)) {
+    const p = count / len;
+    h -= p * Math.log2(p);
   }
-
-  // Clone pattern so lastIndex resets every call
-  function scan(pattern, body, cb) {
-    const flags = pattern.flags.includes('g') ? pattern.flags : pattern.flags + 'g';
-    const re = new RegExp(pattern.source, flags);
-    let m;
-    while ((m = re.exec(body)) !== null) {
-      const v = (m[1] !== undefined ? m[1] : m[0]).trim();
-      if (v) cb(v, m);
-      if (re.lastIndex === m.index) re.lastIndex++;
-    }
-  }
-
-  // 1. Named high-value endpoints (priority)
-  for (const p of NAMED_ENDPOINT_PATTERNS) {
-    scan(p, content, v => { if (isValidPath(v)) add('endpoints', v); });
-  }
-
-  // 2. Generic path extraction — catches ANY quoted /xxx/yyy path
-  scan(GENERIC_PATH_RE, content, v => { if (isValidPath(v)) add('endpoints', v); });
-
-  // 3. fetch/axios/XHR call patterns
-  for (const p of FETCH_CALL_PATTERNS) {
-    scan(p, content, v => { if (isValidPath(v)) add('endpoints', v); });
-  }
-
-  // 4. Template literal path segments
-  scan(TEMPLATE_PATH_RE, content, v => { if (isValidPath(v)) add('endpoints', v); });
-
-  // 5. URLs
-  for (const p of URL_PATTERNS) {
-    scan(p, content, v => { if (isValidUrl(v)) add('urls', v); });
-  }
-
-  // 6. Secrets / tokens
-  for (const [p, label] of SECRET_PATTERNS) {
-    scan(p, content, v => {
-      if (isValidSecret(v)) {
-        const masked = v.length > 20 ? v.slice(0,10) + '\u2026' + v.slice(-4) : v;
-        add('secrets', '[' + label + '] ' + masked);
-      }
-    });
-  }
-
-  // 7. Credentials / passwords
-  for (const [p, label] of CRED_PATTERNS) {
-    scan(p, content, v => {
-      if (isValidCred(v)) {
-        const masked = v.length > 20 ? v.slice(0,8) + '\u2026' + v.slice(-4) : v;
-        add('creds', '[' + label + '] ' + masked);
-      }
-    });
-  }
-
-  // 8. Unauthenticated route patterns
-  for (const [p, label] of UNAUTH_PATTERNS) {
-    scan(p, content, (v, m) => {
-      // Use the full match for context, truncated
-      const ctx = m[0].replace(/\s+/g,' ').trim();
-      const display = '[' + label + '] ' + ctx.slice(0, 120);
-      add('unauth', display);
-    });
-  }
-
-  // 9. Emails
-  scan(EMAIL_PATTERN, content, v => { if (isValidEmail(v)) add('emails', v); });
-
-  // 10. Files
-  scan(FILE_PATTERN, content, v => { if (isValidFile(v)) add('files', v); });
-
-  return findings;
+  return h;
 }
 
-// ═══════════════════════════════════════════════════════
-//  UI — URL management
-// ═══════════════════════════════════════════════════════
-let uidCounter = 0;
-
-function addUrl() {
-  const input = document.getElementById('url-input');
-  const raw = input.value.trim();
-  if (!raw) return;
-  const urls = raw.split(/[\n,\s]+/).map(u=>u.trim()).filter(u=>u.startsWith('http'));
-  urls.forEach(url => {
-    if (urlSources.find(s=>s.url===url)) return;
-    urlSources.push({id: ++uidCounter, url, status:'pending'});
-  });
-  input.value = '';
-  renderUrlList();
-}
-
-document.getElementById('url-input').addEventListener('keydown', e => { if (e.key==='Enter') addUrl(); });
-
-function renderUrlList() {
-  const el = document.getElementById('url-list');
-  el.innerHTML = urlSources.map(s => `
-    <div class="url-item" id="url-item-${s.id}">
-      <div class="status ${s.status}"></div>
-      <div class="url-text" title="${s.url}">${s.url}</div>
-      <button class="remove-btn" onclick="removeUrl(${s.id})">×</button>
-    </div>`).join('');
-}
-
-function removeUrl(id) {
-  urlSources = urlSources.filter(s=>s.id!==id);
-  renderUrlList();
-}
-
-function setUrlStatus(id, status) {
-  const s = urlSources.find(u=>u.id===id);
-  if (s) { s.status = status; renderUrlList(); }
-}
-
-// ═══════════════════════════════════════════════════════
-//  UI — File management
-// ═══════════════════════════════════════════════════════
-function handleFiles(files) {
-  Array.from(files).forEach(file => {
-    if (fileSources.find(f=>f.name===file.name)) return;
-    const reader = new FileReader();
-    reader.onload = e => {
-      fileSources.push({id: ++uidCounter, name: file.name, size: file.size, content: e.target.result});
-      renderFileList();
-    };
-    reader.readAsText(file);
-  });
-}
-
-const dz = document.getElementById('drop-zone');
-dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('drag-over'); });
-dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
-dz.addEventListener('drop', e => {
-  e.preventDefault(); dz.classList.remove('drag-over');
-  handleFiles(e.dataTransfer.files);
-});
-
-function renderFileList() {
-  const el = document.getElementById('file-list');
-  el.innerHTML = fileSources.map(f => `
-    <div class="file-item">
-      <span class="file-icon">\u2b20</span>
-      <span class="file-name" title="${f.name}">${f.name}</span>
-      <span class="file-size">${formatBytes(f.size)}</span>
-      <button class="remove-btn" onclick="removeFile(${f.id})">×</button>
-    </div>`).join('');
-}
-
-function removeFile(id) {
-  fileSources = fileSources.filter(f=>f.id!==id);
-  renderFileList();
-}
-
-function formatBytes(b) {
-  if (b < 1024) return b+'B';
-  if (b < 1024*1024) return (b/1024).toFixed(1)+'KB';
-  return (b/1024/1024).toFixed(1)+'MB';
-}
-
-// ═══════════════════════════════════════════════════════
-//  SCAN
-// ═══════════════════════════════════════════════════════
-async function startScan() {
-  const btn = document.getElementById('scan-btn');
-  const total = urlSources.length + fileSources.length;
-  if (total === 0) { toast('Add URLs or files first'); return; }
-
-  btn.disabled = true;
-  btn.textContent = '\u23f3 SCANNING\u2026';
-
-  let done = 0;
-  updateProgress(0);
-
-  const sources = document.getElementById('source-select');
-  while (sources.options.length > 1) sources.remove(1);
-
-  for (const f of fileSources) {
-    log('Analyzing file: ' + f.name, 'info');
-    try {
-      const findings = analyzeContent(f.content, f.name);
-      allFindings.push(...findings);
-      addSourceOption(f.name);
-      log('\u2713 ' + f.name + ' \u2192 ' + findings.length + ' findings', 'ok');
-    } catch(e) {
-      log('\u2717 ' + f.name + ': ' + e.message, 'err');
-    }
-    done++;
-    updateProgress(done / total * 100);
-    renderResults();
-    updateStats();
-  }
-
-  for (const s of urlSources) {
-    setUrlStatus(s.id, 'loading');
-    log('Fetching: ' + s.url, 'info');
-    try {
-      const content = await fetchUrl(s.url);
-      const name = s.url.split('/').pop().split('?')[0] || s.url;
-      const findings = analyzeContent(content, name);
-      allFindings.push(...findings);
-      addSourceOption(name);
-      setUrlStatus(s.id, 'done');
-      log('\u2713 ' + name + ' \u2192 ' + findings.length + ' findings', 'ok');
-    } catch(e) {
-      setUrlStatus(s.id, 'error');
-      log('\u2717 ' + s.url + ': ' + e.message, 'err');
-    }
-    done++;
-    updateProgress(done / total * 100);
-    renderResults();
-    updateStats();
-  }
-
-  btn.disabled = false;
-  btn.textContent = '\u26a1 ANALYZE ALL';
-  updateProgress(100);
-  setTimeout(() => updateProgress(0), 1200);
-  toast('Done! ' + allFindings.length + ' total findings');
-}
-
-async function fetchUrl(url) {
+// ══════════════════════════════════════════════════════
+//  SAFE REGEX RUNNER
+// ══════════════════════════════════════════════════════
+function runPat(src, flags, text, cb) {
+  const f = flags.includes('g') ? flags : flags + 'g';
+  let re;
+  try { re = new RegExp(src, f); } catch(e) { return; }
+  let m, iters = 0;
   try {
-    const resp = await fetch(url, { mode: 'cors', cache: 'no-store' });
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    return await resp.text();
-  } catch(e) {
-    const proxy = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
-    const resp2 = await fetch(proxy, {cache: 'no-store'});
-    if (!resp2.ok) throw new Error('Proxy HTTP ' + resp2.status);
-    const data = await resp2.json();
-    return data.contents || '';
+    while ((m = re.exec(text)) !== null) {
+      if (++iters > 50000) break;
+      if (re.lastIndex === m.index) { re.lastIndex++; continue; }
+      const v = (m[1] !== undefined ? m[1] : m[0]).trim();
+      if (v) { try { cb(v, m[0]); } catch(_){} }
+    }
+  } catch(_) {}
+}
+
+// ══════════════════════════════════════════════════════
+//  PLACEHOLDER DETECTOR
+// ══════════════════════════════════════════════════════
+const PLACEHOLDER_VALS = [
+  'example','placeholder','your_','your-','xxxx','changeme','undefined','null',
+  '<insert','password123','admin123','test123','sample','dummy','fake','mock',
+  'replace','todo','fixme','abc123','qwerty','letmein','demo','default','secret123',
+  '1234567','aaaaaaa','0000000','111111','abcdefg','testtest','test-key','dev-key',
+];
+function isLikelyPlaceholder(v) {
+  if (!v) return true;
+  const vl = v.toLowerCase();
+  return PLACEHOLDER_VALS.some(p => vl.includes(p));
+}
+
+// ══════════════════════════════════════════════════════
+//  ENDPOINT PATTERNS
+// ══════════════════════════════════════════════════════
+const EP_PATS = [
+  [/(?:fetch|axios|request|http\.get|http\.post|http\.put|http\.delete|http\.patch|XMLHttpRequest|superagent|got|ky|wretch)\s*[\.(]\s*["'`](\/[a-zA-Z0-9/_.\-?&=%#]{4,150})["'`]/g],
+  [/(?:url|endpoint|path|route|baseURL|baseUrl|apiUrl|API_URL|API_PATH)\s*[:=+]\s*["'`](\/[a-zA-Z0-9/_.\-?]{4,120})["'`]/g],
+  [/["'`](\/(?:api|v\d{1,2}|rest|graphql|gql|rpc|svc|service)\/[a-zA-Z0-9/_.\-]{3,100})["'`]/g],
+  [/["'`](\/(?:auth|login|logout|token|oauth|oauth2|saml|sso|callback|refresh)(?:\/[a-zA-Z0-9/_\-]{1,60})?)["'`]/g],
+  [/["'`](\/(?:admin|internal|debug|config|settings|dashboard|panel|mgmt|manage)(?:\/[a-zA-Z0-9/_\-]{0,60})?)["'`]/g],
+  [/["'`](\/(?:user|account|profile|member|me|self)(?:\/[a-zA-Z0-9/_\-]{1,60})?)["'`]/g],
+  [/["'`](\/(?:upload|file|media|asset|blob|attachment)(?:\/[a-zA-Z0-9/_\-]{0,60})?)["'`]/g],
+  [/["'`](\/(?:payment|pay|billing|invoice|subscription|plan|checkout)(?:\/[a-zA-Z0-9/_\-]{0,60})?)["'`]/g],
+  [/["'`](\/(?:webhook|hook|callback|notify|event|subscribe)(?:\/[a-zA-Z0-9/_\-]{0,60})?)["'`]/g],
+  [/["'`](\/(?:health|ping|ready|live|alive|status|metrics|monitor)(?:\/[a-zA-Z0-9/_\-]{0,60})?)["'`]/g],
+  [/["'`](\/(?:search|query|find|filter|lookup)(?:\/[a-zA-Z0-9/_\-]{0,60})?)["'`]/g],
+  [/["'`](\/(?:report|export|import|download|generate)(?:\/[a-zA-Z0-9/_\-]{0,60})?)["'`]/g],
+  [/["'`](\/(?:swagger|openapi|docs|spec|schema)(?:\/[a-zA-Z0-9/_.\-]{0,60})?)["'`]/g],
+  [/["'`](\/(?:private|secret|hidden|internal-api|backend)(?:\/[a-zA-Z0-9/_\-]{0,60})?)["'`]/gi],
+  [/["'`](\/[a-zA-Z0-9/_\-]{3,120}\.(?:json|xml|yaml|yml|env|log|bak|old|zip|tar|gz))["'`]/gi],
+  [/["'`](\/[a-zA-Z0-9/_\-]+\/:[a-zA-Z0-9_]+(?:\/[a-zA-Z0-9/_\-]*)?)["'`]/g],
+  [/["'`](\/[a-zA-Z0-9/_\-]+\?[a-zA-Z0-9=&_\-]{5,100})["'`]/g],
+  [/["'`](\/(?:graphql|gql)(?:\/[a-zA-Z0-9/_\-]*)?)["'`]/gi],
+];
+
+// ══════════════════════════════════════════════════════
+//  URL PATTERNS
+// ══════════════════════════════════════════════════════
+const URL_PATS = [
+  [/https?:\/\/[a-z0-9.\-_]+\.s3\.amazonaws\.com[^\s"'<>]{0,200}/g],
+  [/https?:\/\/s3\.amazonaws\.com\/[a-z0-9.\-_]+[^\s"'<>]{0,200}/g],
+  [/https?:\/\/[a-z0-9.\-_]+\.s3-website\.[a-z0-9\-]+\.amazonaws\.com[^\s"'<>]{0,150}/g],
+  [/https?:\/\/[a-z0-9\-]+\.googleapis\.com\/[^\s"'<>]{0,150}/g],
+  [/https?:\/\/[a-z0-9\-]+\.file\.core\.windows\.net[^\s"'<>]{0,150}/g],
+  [/https?:\/\/api\.cloudflare\.com\/client\/v4\/[^\s"'<>]*/g],
+  [/https?:\/\/[a-z0-9\-]+\.supabase\.(?:co|in)\/rest\/v1\/[^\s"'<>]*/g],
+  [/https?:\/\/[a-z0-9\-]+\.supabase\.(?:co|in)\/storage\/v1\/[^\s"'<>]*/g],
+  [/https?:\/\/firestore\.googleapis\.com\/[^\s"'<>]{0,150}/g],
+  [/https?:\/\/identitytoolkit\.googleapis\.com\/[^\s"'<>]{0,150}/g],
+  [/https?:\/\/[^\s"'<>]+\/gql[^\s"'<>]*/gi],
+  [/https?:\/\/[^\s"'<>]+\/admin[^\s"'<>]*/gi],
+  [/https?:\/\/[^\s"'<>]+\/dashboard[^\s"'<>]*/gi],
+  [/https?:\/\/[^\s"'<>]+\/auth[^\s"'<>]*/gi],
+  [/https?:\/\/[^\s"'<>]+\/login[^\s"'<>]*/gi],
+  [/https?:\/\/[^\s"'<>]+\/debug[^\s"'<>]*/gi],
+  [/https?:\/\/[^\s"'<>]+\/test[^\s"'<>]*/gi],
+  [/https?:\/\/cdn\.[^\s"'<>]+\/[^\s"'<>]*/gi],
+  [/https?:\/\/\d{1,3}(?:\.\d{1,3}){3}:[0-9]{2,5}[^\s"'<>]*/g],
+  [/wss?:\/\/(?:localhost|127\.0\.0\.1)[^\s"'<>]*/g],
+];
+
+// ══════════════════════════════════════════════════════
+//  CLOUD BUCKET PATTERNS (NEW — dedicated category)
+// ══════════════════════════════════════════════════════
+const CLOUD_PATS = [
+  // ── AWS S3 ──
+  [/https?:\/\/([a-z0-9.\-_]{3,63})\.s3\.amazonaws\.com(?:\/[^\s"'<>]{0,200})?/g,         'AWS_S3_VirtualHost',  'high'],
+  [/https?:\/\/s3\.amazonaws\.com\/([a-z0-9.\-_]{3,63})(?:\/[^\s"'<>]{0,200})?/g,         'AWS_S3_Path',         'high'],
+  [/https?:\/\/s3[.\-][a-z0-9\-]+\.amazonaws\.com\/([a-z0-9.\-_]{3,63})(?:\/[^\s"'<>]*)?/g,'AWS_S3_Regional',    'high'],
+  [/https?:\/\/([a-z0-9.\-_]{3,63})\.s3-website[.\-][a-z0-9\-]+\.amazonaws\.com/g,         'AWS_S3_StaticSite',   'high'],
+  [/["'`]([a-z0-9][a-z0-9.\-]{1,61}[a-z0-9])["'`]\s*(?:as\s+)?(?:bucket|Bucket|BUCKET|s3Bucket|S3_BUCKET)/g, 'AWS_S3_BucketName', 'med'],
+  [/(?:bucket|BUCKET|s3Bucket|S3_BUCKET|bucketName)\s*[:=]\s*["'`]([a-z0-9][a-z0-9.\-]{1,61}[a-z0-9])["'`]/gi, 'AWS_S3_BucketVar', 'high'],
+  // ── Google Cloud Storage ──
+  [/https?:\/\/storage\.googleapis\.com\/([a-z0-9_.\-]{3,63})(?:\/[^\s"'<>]{0,200})?/g,    'GCS_Bucket',          'high'],
+  [/https?:\/\/([a-z0-9_.\-]{3,63})\.storage\.googleapis\.com(?:\/[^\s"'<>]{0,200})?/g,    'GCS_VirtualHost',     'high'],
+  [/gs:\/\/([a-z0-9_.\-]{3,63})(?:\/[^\s"'<>]{0,200})?/g,                                  'GCS_URI',             'high'],
+  [/(?:gcsBucket|gcs_bucket|storageBucket|STORAGE_BUCKET)\s*[:=]\s*["'`]([a-z0-9_.\-]{3,63})["'`]/gi,'GCS_BucketVar','high'],
+  // ── Azure Blob Storage ──
+  [/https?:\/\/([a-z0-9]{3,24})\.blob\.core\.windows\.net(?:\/[^\s"'<>]{0,200})?/g,        'Azure_Blob',          'high'],
+  [/https?:\/\/([a-z0-9]{3,24})\.dfs\.core\.windows\.net(?:\/[^\s"'<>]{0,200})?/g,         'Azure_DataLake',      'high'],
+  [/https?:\/\/([a-z0-9]{3,24})\.queue\.core\.windows\.net(?:\/[^\s"'<>]{0,200})?/g,       'Azure_Queue',         'med'],
+  [/https?:\/\/([a-z0-9]{3,24})\.table\.core\.windows\.net(?:\/[^\s"'<>]{0,200})?/g,       'Azure_Table',         'med'],
+  [/DefaultEndpointsProtocol=https?;AccountName=([a-z0-9]{3,24});AccountKey=[A-Za-z0-9+/=]{80,}/g, 'Azure_StorageConnString', 'high'],
+  // ── Cloudflare R2 ──
+  [/https?:\/\/[a-z0-9]{32}\.r2\.cloudflarestorage\.com(?:\/[^\s"'<>]{0,200})?/g,          'CF_R2_Bucket',        'high'],
+  [/https?:\/\/[a-z0-9.\-]+\.r2\.dev(?:\/[^\s"'<>]{0,200})?/g,                             'CF_R2_Public',        'high'],
+  // ── DigitalOcean Spaces ──
+  [/https?:\/\/([a-z0-9\-]{3,63})\.([a-z]{3}\d+)\.digitaloceanspaces\.com(?:\/[^\s"'<>]{0,200})?/g, 'DO_Space', 'high'],
+  [/https?:\/\/([a-z0-9\-]{3,63})\.cdn\.digitaloceanspaces\.com(?:\/[^\s"'<>]{0,200})?/g,  'DO_Space_CDN',        'high'],
+  // ── Backblaze B2 ──
+  [/https?:\/\/f\d{3}\.backblazeb2\.com\/file\/([a-z0-9\-]{6,63})(?:\/[^\s"'<>]{0,200})?/g,'B2_Bucket',           'high'],
+  [/https?:\/\/([a-z0-9\-]{6,63})\.s3\.us-[a-z0-9\-]+\.backblazeb2\.com(?:\/[^\s"'<>]{0,200})?/g,'B2_S3Compat',  'high'],
+  // ── MinIO / self-hosted S3 ──
+  [/(?:MINIO_ENDPOINT|minio_endpoint|minioEndpoint)\s*[:=]\s*["'`]([^\s"'`]{8,200})["'`]/gi,'MinIO_Endpoint',     'med'],
+  // ── Alibaba Cloud OSS ──
+  [/https?:\/\/([a-z0-9\-]{3,63})\.oss(?:-[a-z0-9\-]+)?\.aliyuncs\.com(?:\/[^\s"'<>]{0,200})?/g, 'Alibaba_OSS', 'high'],
+  // ── IBM Cloud Object Storage ──
+  [/https?:\/\/s3\.[a-z0-9\-]+\.cloud-object-storage\.appdomain\.cloud\/([a-z0-9\-]{3,63})(?:\/[^\s"'<>]{0,200})?/g, 'IBM_COS', 'high'],
+  // ── Wasabi ──
+  [/https?:\/\/s3\.[a-z0-9\-]+\.wasabisys\.com\/([a-z0-9\-]{3,63})(?:\/[^\s"'<>]{0,200})?/g, 'Wasabi_Bucket',    'high'],
+  // ── Oracle Cloud ──
+  [/https?:\/\/objectstorage\.[a-z0-9\-]+\.oraclecloud\.com\/n\/[a-z0-9]+\/b\/([a-z0-9\-]{3,63})(?:\/[^\s"'<>]{0,200})?/g, 'Oracle_OCI_Bucket', 'high'],
+  // ── Firebase Storage ──
+  [/https?:\/\/firebasestorage\.googleapis\.com\/v0\/b\/([a-z0-9\-.]+)(?:\/[^\s"'<>]{0,200})?/g, 'Firebase_Storage', 'high'],
+  [/["'`]([a-z0-9\-]+\.appspot\.com)["'`]/g,                                                'Firebase_AppSpot',    'med'],
+  // ── Generic bucket variable names ──
+  [/(?:bucketUrl|bucket_url|BUCKET_URL|storageUrl|storage_url|STORAGE_URL|cdnUrl|CDN_URL)\s*[:=]\s*["'`](https?:\/\/[^\s"'`]{10,200})["'`]/gi, 'Generic_BucketURL', 'med'],
+  // ── Pre-signed URLs (temporary auth — very high value) ──
+  [/(https?:\/\/[a-z0-9.\-]+\.amazonaws\.com\/[^\s"'<>]*X-Amz-Signature=[^\s"'<>]{10,200})/g, 'AWS_Presigned_URL', 'high'],
+  [/(https?:\/\/storage\.googleapis\.com\/[^\s"'<>]*X-Goog-Signature=[^\s"'<>]{10,200})/g,   'GCS_Presigned_URL', 'high'],
+  [/(https?:\/\/[a-z0-9]+\.blob\.core\.windows\.net\/[^\s"'<>]*sig=[^\s"'<>]{10,200})/g,     'Azure_SAS_URL',     'high'],
+];
+
+// ══════════════════════════════════════════════════════
+//  SECRET PATTERNS (JS-safe — no (?i) flag)
+// ══════════════════════════════════════════════════════
+const SEC_PATS = [
+  // AWS
+  [/(AKIA[0-9A-Z]{16})/g,                                                       'AWS_AccessKey',          'high'],
+  [/(ASIA[0-9A-Z]{16})/g,                                                       'AWS_TempKey',            'high'],
+  [/AWS_SECRET_ACCESS_KEY\s*[:=]\s*["'`]?([A-Za-z0-9\/+=]{40})["'`]?/g,       'AWS_SecretKey',           'high'],
+  [/(arn:aws:iam::[0-9]{12}:(?:user|role)\/[A-Za-z0-9+=,.@_\-\/]+)/g,          'AWS_ARN',                 'med'],
+  // Google
+  [/(AIza[0-9A-Za-z\-_]{35})/g,                                                 'Google_API',              'high'],
+  [/\b(ya29\.[A-Za-z0-9_\-]{30,100})\b/g,                                      'Google_OAuth2',           'high'],
+  [/([0-9]+-[0-9A-Za-z_]{32}\.apps\.googleusercontent\.com)/g,                'Google_ClientID',         'high'],
+  [/"private_key"\s*:\s*"(-----BEGIN PRIVATE KEY-----[^"]{40,})"/g,            'GCP_ServiceAccount_Key',  'high'],
+  // GitHub
+  [/(ghp_[a-zA-Z0-9]{36})/g,                                                    'GitHub_PAT',              'high'],
+  [/(github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})/g,                           'GitHub_FineGrainedPAT',   'high'],
+  [/(gho_[a-zA-Z0-9]{36})/g,                                                    'GitHub_OAuth',            'high'],
+  [/(ghu_[a-zA-Z0-9]{36})/g,                                                    'GitHub_UserServer',       'high'],
+  [/(ghs_[a-zA-Z0-9]{36})/g,                                                    'GitHub_ServerServer',     'high'],
+  [/(ghr_[a-zA-Z0-9]{36})/g,                                                    'GitHub_Refresh',          'high'],
+  // GitLab
+  [/(glpat-[0-9a-zA-Z\-_]{20})/g,                                              'GitLab_PAT',              'high'],
+  // Stripe
+  [/(sk_live_[0-9a-zA-Z]{24,50})/g,                                            'Stripe_SecretLive',       'high'],
+  [/(sk_test_[0-9a-zA-Z]{24,50})/g,                                            'Stripe_SecretTest',       'med'],
+  [/(pk_live_[0-9a-zA-Z]{24,50})/g,                                            'Stripe_PublicLive',       'med'],
+  [/(rk_live_[0-9a-zA-Z]{40,110})/g,                                           'Stripe_RestrictedLive',   'high'],
+  // Slack
+  [/(xoxb-[0-9]{8,12}-[0-9]{8,12}-[0-9a-zA-Z]{24})/g,                        'Slack_BotToken',          'high'],
+  [/(xoxp-[0-9]{8,12}-[0-9]{8,12}-[0-9a-zA-Z]{24})/g,                        'Slack_UserToken',         'high'],
+  [/(xox[baprs]-[0-9a-zA-Z\-]{10,60})/g,                                      'Slack_Token',             'med'],
+  [/T[a-zA-Z0-9_]{8,12}\/B[a-zA-Z0-9_]{8,12}\/[a-zA-Z0-9_]{24}/g,           'Slack_Webhook',           'high'],
+  // Twilio
+  [/\b(SK[0-9a-fA-F]{32})\b/g,                                                'Twilio_APIKey',           'high'],
+  [/\b(AC[a-zA-Z0-9]{32})\b/g,                                                'Twilio_AccountSID',       'high'],
+  // SendGrid
+  [/(SG\.[A-Za-z0-9_\-]{22}\.[A-Za-z0-9_\-]{43})/g,                          'SendGrid_APIKey',         'high'],
+  // Mailgun
+  [/(key-[0-9a-zA-Z]{32})/g,                                                   'Mailgun_APIKey',          'high'],
+  // MailChimp
+  [/([0-9a-f]{32}-us[0-9]{1,2})/g,                                            'MailChimp_APIKey',        'high'],
+  // OpenAI
+  [/(sk-[A-Za-z0-9]{20}T3BlbkFJ[A-Za-z0-9]{20})/g,                          'OpenAI_UserKey',          'high'],
+  [/(sk-proj-[A-Za-z0-9]{20}T3BlbkFJ[A-Za-z0-9]{20})/g,                     'OpenAI_ProjectKey',       'high'],
+  [/(sk-[A-Za-z0-9\-_]{48,60})/g,                                             'OpenAI_Key_Generic',      'med'],
+  // Anthropic
+  [/(sk-ant-api03-[A-Za-z0-9\-_]{90,110})/g,                                  'Anthropic_APIKey',        'high'],
+  // Vercel
+  [/(vercel_[A-Za-z0-9]{24})/g,                                               'Vercel_Token',            'high'],
+  // DigitalOcean
+  [/(do_[0-9a-f]{64})/g,                                                       'DigitalOcean_Token',      'high'],
+  // Square
+  [/(sqOatp-[0-9A-Za-z\-_]{22})/g,                                            'Square_AccessToken',      'high'],
+  // Facebook
+  [/(EAACEdEose0cBA[0-9A-Za-z]+)/g,                                            'Facebook_AccessToken',    'high'],
+  // Shopify
+  [/(shpat_[0-9a-fA-F]{32})/g,                                                'Shopify_Token',           'high'],
+  // JWT
+  [/(eyJ[A-Za-z0-9_\-]{10,}\.eyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,})/g,'JWT',                    'high'],
+  // Private keys
+  [/(-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----)/g,               'PrivateKey',              'high'],
+  // DB connection strings
+  [/(mongodb(?:\+srv)?:\/\/[^\s"'<>]{8,200})/g,                              'MongoDB_URI',             'high'],
+  [/(postgres(?:ql)?:\/\/[^\s"'<>]{8,200})/g,                                'PostgreSQL_URI',           'high'],
+  [/(mysql:\/\/[^\s"'<>]{8,150})/g,                                           'MySQL_URI',                'high'],
+  [/(redis:\/\/[^\s"'<>]{8,150})/g,                                           'Redis_URI',                'high'],
+  // Heroku (context-required to avoid bare UUID false positives)
+  [/(?:heroku|HEROKU)[_\-.]?(?:api[_\-.]?key|token|secret|auth)\s*[:=]\s*["'`]?([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})["'`]?/gi,'Heroku_APIKey','high'],
+  // Firebase (context-required)
+  [/(?:firebase|FIREBASE)[_\-.]?(?:api[_\-.]?key|token|auth)\s*[:=]\s*["'`]([^\s"'`]{8,100})["'`]/gi,  'Firebase_Key', 'med'],
+  // Azure (context-required)
+  [/(?:azure|AZURE)[_\-.]?(?:client|tenant|secret|key)\s*[:=]\s*["'`]([0-9a-zA-Z\-._~+/]{20,})["'`]/gi,'Azure_Generic','med'],
+  // Base64 secrets (context-required)
+  [/(?:key|token|secret|password|credential)\s*[:=]\s*["'`]((?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==))["'`]/gi, 'Base64_Secret', 'med'],
+  // Source map reference
+  [/(\/\/# sourceMappingURL=\S+\.map)/g,                                        'SourceMap_Reference',     'low'],
+  // Generic context-aware secret
+  [/(?:api|secret|token|auth|password)\s*[:=]\s*["'`]([A-Za-z0-9\-_=]{20,})["'`]/gi, 'Generic_Secret',  'low'],
+];
+
+// ══════════════════════════════════════════════════════
+//  CREDENTIAL PATTERNS
+// ══════════════════════════════════════════════════════
+const CRED_PATS = [
+  [/(?:password|passwd|pwd)\s*[:=]\s*["'`]([^"'`\s]{6,80})["'`]/gi,          'password',       'high'],
+  [/(?:client_secret|clientSecret)\s*[:=]\s*["'`]([^"'`\s]{8,100})["'`]/gi,  'client_secret',  'high'],
+  [/(?:api_?key|apikey|api-key)\s*[:=]\s*["'`]([^"'`\s]{8,100})["'`]/gi,     'api_key',        'high'],
+  [/(?:auth_?token|authtoken)\s*[:=]\s*["'`]([^"'`\s]{8,100})["'`]/gi,       'auth_token',     'high'],
+  [/(?:access_?token|accesstoken)\s*[:=]\s*["'`]([^"'`\s]{8,120})["'`]/gi,   'access_token',   'high'],
+  [/(?:refresh_?token)\s*[:=]\s*["'`]([^"'`\s]{8,120})["'`]/gi,              'refresh_token',  'high'],
+  [/(?:private_?key)\s*[:=]\s*["'`]([^"'`\s]{8,100})["'`]/gi,                'private_key',    'high'],
+  [/(?:db_?url|database_?url|db_?uri|database_?uri)\s*[:=]\s*["'`]([^"'`\s]{8,200})["'`]/gi, 'db_url', 'high'],
+  [/Basic\s+([A-Za-z0-9+\/]{20,100}={0,2})/g,                                'Basic_Auth',     'high'],
+  [/Bearer\s+([A-Za-z0-9+\/\-_\.]{20,200})/g,                                'Bearer_Token',   'med'],
+  [/(?:X-API-KEY|x-api-key)\s*[:=]\s*["'`]([^"'`\s]{8,80})["'`]/gi,         'x_api_key',      'high'],
+  [/(?:Authorization|authorization)\s*[:=]\s*["'`]([^"'`\s]{10,200})["'`]/gi,'auth_header',    'med'],
+  [/(?:smtp_?pass|smtp_?password|email_?pass)\s*[:=]\s*["'`]([^"'`\s]{4,60})["'`]/gi,'smtp_pass','high'],
+  [/(?:encryption_?key|encrypt_?key)\s*[:=]\s*["'`]([^"'`\s]{8,100})["'`]/gi,'encrypt_key',   'high'],
+  [/(?:signing_?key|sign_?secret|jwt_?secret)\s*[:=]\s*["'`]([^"'`\s]{8,100})["'`]/gi,'jwt_secret','high'],
+  [/(?:webhook_?secret|hook_?secret)\s*[:=]\s*["'`]([^"'`\s]{8,100})["'`]/gi,'webhook_secret', 'high'],
+];
+
+// ══════════════════════════════════════════════════════
+//  NO-AUTH PATTERNS
+// ══════════════════════════════════════════════════════
+const UNAUTH_PATS = [
+  [/(?:requiresAuth|requireAuth|requires_auth)\s*:\s*false/gi,               'requiresAuth:false'],
+  [/(?:isPublic|openAccess|is_public)\s*:\s*true/gi,                         'isPublic:true'],
+  [/allowAnonymous\s*[:=]\s*true/gi,                                          'allowAnonymous'],
+  [/permitAll\s*\(\s*\)/gi,                                                   'permitAll()'],
+  [/\.anonymous\s*\(\s*\)/gi,                                                 '.anonymous()'],
+  [/@(?:PermitAll|Public|Unsecured)\b/g,                                     '@PermitAll'],
+  [/\[AllowAnonymous\]/g,                                                     '[AllowAnonymous]'],
+  [/(?:skipAuth|bypassAuth|skip_auth|bypass_auth)\s*[:=]\s*true/gi,         'skipAuth:true'],
+  [/if\s*\(\s*!(?:token|auth|jwt|session|cookie)\s*\)\s*(?:return\s+)?next\s*\(\s*\)/gi, 'auth-skip:next()'],
+  [/meta\s*:\s*\{[^}]{0,200}(?:requiresAuth)\s*:\s*false/gi,               'router:no-auth'],
+  [/no.?auth(?:entication)?\s*[:=:]\s*true/gi,                              'noAuth:true'],
+  [/(?:public|open)_?(?:route|endpoint|api|access)\s*[:=]\s*true/gi,       'publicRoute:true'],
+];
+
+const EMAIL_PAT = /([a-zA-Z0-9._%+\-]{1,64}@[a-zA-Z0-9.\-]{1,64}\.[a-zA-Z]{2,8})/g;
+const FILE_PAT  = /["'`]([a-zA-Z0-9_\/.\-]{2,150}\.(?:sql|csv|json|xml|yaml|yml|txt|log|conf|config|env|bak|key|pem|crt|p12|pfx|zip|tar|gz|sh|bash|bat|py|rb|php|go|rs|c|h|cpp|java|class|jar|war|ear))["'`]/gi;
+
+// ══════════════════════════════════════════════════════
+//  VALIDATORS
+// ══════════════════════════════════════════════════════
+const PATH_BLOCKLIST = [
+  /\.(png|jpg|gif|svg|ico|woff|woff2|ttf|eot|otf|css|map|html|htm|js|ts|jsx|tsx|scss|less|md)$/i,
+  /^\/[a-zA-Z]{1,3}$/,
+  /node_modules|webpack|chunk|bundle|vendor|polyfill|runtime|manifest|__webpack/i,
+  /^\$\{|^#|^\/+$|^\/{2,}/,
+  /^\/\d+/,
+  /\.(min|bundle|chunk)\./i,
+];
+const NOISE_URL_DOMAINS = [
+  'w3.org','example.com','test.com','npmjs.org','schemas.openxmlformats',
+  'schema.org','xmlns.com','mozilla.org','whatwg.org','ecma-international.org',
+  'iana.org','rfc-editor.org','localhost',
+];
+
+function okPath(v) {
+  if (!v || v.length < 5 || v.length > 250) return false;
+  if (!v.startsWith('/')) return false;
+  for (const r of PATH_BLOCKLIST) { try { if (r.test(v)) return false; } catch(_){} }
+  const segs = v.split('/').filter(Boolean);
+  if (segs.length === 0) return false;
+  if (segs.every(s => s.length < 3)) return false;
+  if (segs.length === 1 && /^[0-9a-f]{8,}$/i.test(segs[0])) return false;
+  return true;
+}
+function okUrl(v) {
+  if (!v || v.length < 12 || v.length > 500) return false;
+  const vl = v.toLowerCase();
+  if (NOISE_URL_DOMAINS.some(d => vl.includes(d))) return false;
+  if (vl.includes('{') || vl.includes('undefined') || vl.startsWith('data:') || vl.startsWith('blob:')) return false;
+  return true;
+}
+function okSecret(v, confidence) {
+  if (!v || v.length < 10) return false;
+  if (isLikelyPlaceholder(v)) return false;
+  if (confidence === 'low' && shannonEntropy(v) < 3.0) return false;
+  if (confidence === 'med' && shannonEntropy(v) < 2.5) return false;
+  return true;
+}
+function okCred(v) {
+  if (!v || v.length < 5) return false;
+  if (isLikelyPlaceholder(v)) return false;
+  if (v.startsWith('${') || v.startsWith('{{') || v.startsWith('<%')) return false;
+  if (/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(v) && v.length < 16) return false;
+  if (shannonEntropy(v) < 2.0 && v.length < 20) return false;
+  return true;
+}
+function okEmail(v) {
+  if (!v || !v.includes('@')) return false;
+  const parts = v.split('@');
+  if (parts[0].length < 1 || parts[1].length < 3) return false;
+  const dom = parts[1].toLowerCase();
+  if (['example.com','test.com','domain.com','email.com','your-domain.com'].includes(dom)) return false;
+  if (PLACEHOLDER_VALS.some(x => v.toLowerCase().includes(x))) return false;
+  return true;
+}
+function okFile(v) {
+  if (!v || v.length < 4) return false;
+  const vl = v.toLowerCase();
+  return !['node_modules','.min.','webpack','chunk','bundle','vendor','tsconfig','package.json','jest.config'].some(x => vl.includes(x));
+}
+function okCloud(v) {
+  if (!v || v.length < 8) return false;
+  if (v.includes('example') || v.includes('test') || v.includes('placeholder')) return false;
+  return true;
+}
+
+// ══════════════════════════════════════════════════════
+//  ENTROPY SCAN
+// ══════════════════════════════════════════════════════
+function scanEntropy(chunk, srcName, localSeen, results, thresh, minLen) {
+  function add(val, context) {
+    const key = 'entropy\x00' + val;
+    if (localSeen.has(key) || S.seen.has(key)) return;
+    const h = shannonEntropy(val);
+    if (h < thresh) return;
+    if (isLikelyPlaceholder(val)) return;
+    localSeen.add(key);
+    results.push({ cat: 'entropy', val, src: srcName, context: context.slice(0,80), entropy: h.toFixed(2), confidence: h > 5 ? 'high' : h > 4 ? 'med' : 'low' });
   }
+  const qre = new RegExp(`["'\`]([A-Za-z0-9+/=_\\-\\.!@#$%]{${minLen},80})["'\`]`, 'g');
+  const are = new RegExp(`(?:key|token|secret|hash|pass|salt|seed|nonce|hmac|bearer|auth|api|sig)\\s*[:=]\\s*["'\`]([A-Za-z0-9+/=_\\-\\.!@#$%]{${minLen},120})["'\`]`, 'gi');
+  runPat(qre.source, qre.flags, chunk, (v, full) => add(v, full));
+  runPat(are.source, are.flags, chunk, (v, full) => add(v, full));
 }
 
-function updateProgress(pct) {
-  document.getElementById('progress-fill').style.width = pct + '%';
-}
-
-function addSourceOption(name) {
-  const sel = document.getElementById('source-select');
-  if (![...sel.options].find(o=>o.value===name)) {
-    const opt = document.createElement('option');
-    opt.value = name; opt.textContent = name;
-    sel.appendChild(opt);
+// ══════════════════════════════════════════════════════
+//  HTML INLINE SCRIPT EXTRACTOR
+// ══════════════════════════════════════════════════════
+function extractInlineScripts(html) {
+  const scripts = [];
+  const re = /<script(?:[^>]*(?:type\s*=\s*["']?(?:text\/javascript|module|application\/javascript)["']?)?[^>]*)>([\s\S]*?)<\/script>/gi;
+  let m;
+  while ((m = re.exec(html)) !== null) {
+    if (!m[1].trim()) continue;
+    if (/\bsrc\s*=/i.test(m[0].split('>')[0])) continue;
+    scripts.push(m[1]);
   }
+  return scripts.join('\n\n');
 }
 
-// ═══════════════════════════════════════════════════════
-//  RENDER
-// ═══════════════════════════════════════════════════════
-const CAT_CLASS = {endpoints:'ep', urls:'url', secrets:'sec', creds:'cred', unauth:'unauth', emails:'mail', files:'file'};
+// ══════════════════════════════════════════════════════
+//  SOURCE MAP PARSER
+// ══════════════════════════════════════════════════════
+function extractSourceMap(content) {
+  try {
+    const map = JSON.parse(content);
+    if (map.sourcesContent && Array.isArray(map.sourcesContent)) {
+      return map.sourcesContent.filter(Boolean).join('\n\n');
+    }
+  } catch(_) {}
+  return content;
+}
 
-function renderResults() {
-  const list = document.getElementById('results-list');
-  const search = document.getElementById('search-input').value.toLowerCase();
-  const srcFilter = document.getElementById('source-select').value;
+// ══════════════════════════════════════════════════════
+//  ANALYZE ONE CHUNK
+// ══════════════════════════════════════════════════════
+function analyzeChunk(chunk, localSeen, results, srcName, entropyThresh, entropyMinLen) {
+  function add(cat, val, context, confidence, extra) {
+    // Deduplicate by category + normalized value
+    const key = cat + '\x00' + val.toLowerCase().trim();
+    if (localSeen.has(key) || S.seen.has(key)) return;
+    localSeen.add(key);
+    results.push({ cat, val, src: srcName, context: (context||'').replace(/\s+/g,' ').trim().slice(0,100), confidence: confidence||'med', ...extra });
+  }
 
-  let filtered = allFindings.filter(f => {
-    if (activeTab !== 'all' && f.category !== activeTab) return false;
-    if (!activeFilters.has(f.category)) return false;
-    if (srcFilter !== 'all' && f.source !== srcFilter) return false;
-    if (search && !f.value.toLowerCase().includes(search) && !f.source.toLowerCase().includes(search)) return false;
-    return true;
+  // Endpoints
+  for (const [re] of EP_PATS) {
+    runPat(re.source, re.flags, chunk, (v, full) => {
+      if (okPath(v)) add('endpoints', v, full, 'high');
+    });
+  }
+
+  // URLs
+  for (const [re] of URL_PATS) {
+    runPat(re.source, re.flags, chunk, (v, full) => {
+      if (okUrl(v)) add('urls', v, full, 'med');
+    });
+  }
+
+  // Cloud buckets
+  for (const [re, label, conf] of CLOUD_PATS) {
+    runPat(re.source, re.flags, chunk, (v, full) => {
+      if (!okCloud(v)) return;
+      add('cloud', `[${label}] ${v}`, full, conf, { rawVal: v, label });
+    });
+  }
+
+  // Secrets
+  for (const [re, label, conf] of SEC_PATS) {
+    runPat(re.source, re.flags, chunk, (v, full) => {
+      if (!okSecret(v, conf)) return;
+      const display = v.length > 24 ? v.slice(0,12) + '…' + v.slice(-5) : v;
+      add('secrets', `[${label}] ${display}`, full, conf, { rawVal: v, label });
+    });
+  }
+
+  // Credentials
+  for (const [re, label, conf] of CRED_PATS) {
+    runPat(re.source, re.flags, chunk, (v, full) => {
+      if (!okCred(v)) return;
+      const display = v.length > 24 ? v.slice(0,10) + '…' + v.slice(-5) : v;
+      add('creds', `[${label}] ${display}`, full, conf||'med', { rawVal: v, label });
+    });
+  }
+
+  // No-auth
+  for (const [re, label] of UNAUTH_PATS) {
+    runPat(re.source, re.flags, chunk, (v, full) => {
+      const ctx = full.replace(/\s+/g,' ').trim().slice(0,100);
+      add('unauth', `[${label}] ${ctx}`, full, 'high');
+    });
+  }
+
+  // Email
+  runPat(EMAIL_PAT.source, EMAIL_PAT.flags, chunk, (v, full) => {
+    if (okEmail(v)) add('emails', v, full, 'high');
   });
 
-  if (filtered.length === 0) {
-    if (allFindings.length === 0) {
-      list.innerHTML = '<div class="empty-state"><div class="empty-ascii">\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591<br>\u2591  ADD JS URLS OR FILES \u2591<br>\u2591  THEN HIT ANALYZE    \u2591<br>\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591</div><div class="empty-msg">Waiting for input\u2026</div></div>';
-    } else {
-      list.innerHTML = '<div class="empty-state"><div class="empty-msg">No results match current filters</div></div>';
+  // Files
+  runPat(FILE_PAT.source, FILE_PAT.flags, chunk, (v, full) => {
+    if (okFile(v)) add('files', v, full, 'med');
+  });
+
+  // Entropy
+  scanEntropy(chunk, srcName, localSeen, results, entropyThresh, entropyMinLen);
+}
+
+// ══════════════════════════════════════════════════════
+//  CHUNKED ASYNC ANALYSIS
+// ══════════════════════════════════════════════════════
+const CHUNK_SIZE = 200000;
+const OVERLAP    = 500;
+
+function sleep() { return new Promise(r => setTimeout(r, 0)); }
+
+async function analyzeContent(content, srcName, onPct) {
+  const localSeen = new Set();
+  const results   = [];
+  const total     = Math.ceil(content.length / CHUNK_SIZE) || 1;
+  const thresh    = S.entropyThresh;
+  const minLen    = S.entropyMinLen;
+
+  for (let i = 0; i < total; i++) {
+    if (S.cancelFlag) break;
+    const start = Math.max(0, i * CHUNK_SIZE - OVERLAP);
+    const end   = Math.min(content.length, (i + 1) * CHUNK_SIZE + OVERLAP);
+    const chunk = content.slice(start, end);
+    analyzeChunk(chunk, localSeen, results, srcName, thresh, minLen);
+    if (onPct) onPct((i + 1) / total);
+    await sleep();
+  }
+
+  for (const k of localSeen) S.seen.add(k);
+  return results;
+}
+
+// ══════════════════════════════════════════════════════
+//  PREPROCESS BY FILE TYPE
+// ══════════════════════════════════════════════════════
+function preprocessContent(content, filename) {
+  const ext = (filename.split('.').pop() || '').toLowerCase();
+  if (ext === 'map') {
+    addLog(`Extracting source map: ${filename}`, 'info');
+    return extractSourceMap(content);
+  }
+  if (ext === 'html' || ext === 'htm') {
+    addLog(`Extracting inline scripts from HTML: ${filename}`, 'info');
+    const inline = extractInlineScripts(content);
+    return content + '\n\n' + inline;
+  }
+  return content;
+}
+
+// ══════════════════════════════════════════════════════
+//  FILE READ — fixed: trigger via label click, not nested input
+// ══════════════════════════════════════════════════════
+function readFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = e => resolve(e.target.result || '');
+    reader.onerror = () => reject(new Error('FileReader failed: ' + file.name));
+    reader.readAsText(file, 'utf-8');
+  });
+}
+
+function registerFiles(fileList) {
+  let added = 0;
+  Array.from(fileList).forEach(file => {
+    if (S.fileSources.find(f => f.name === file.name && f.size === file.size)) return;
+    S.fileSources.push({ id: ++S.uid, name: file.name, size: file.size, fileObj: file, status: 'pending' });
+    added++;
+  });
+  if (added > 0) {
+    renderFileList();
+    addLog(`Added ${added} file(s)`, 'info');
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  FETCH URL
+// ══════════════════════════════════════════════════════
+async function fetchWithTimeout(url, opts, timeoutMs) {
+  const ctrl = new AbortController();
+  const tid  = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const r = await fetch(url, { ...opts, signal: ctrl.signal });
+    clearTimeout(tid);
+    return r;
+  } catch(e) {
+    clearTimeout(tid);
+    throw e;
+  }
+}
+
+async function fetchUrl(url, retries = 2) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const r = await fetchWithTimeout(url, { mode: 'cors', cache: 'no-store' }, 15000);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return await r.text();
+    } catch(e) {
+      if (attempt === retries) {
+        try {
+          const proxy = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+          const r2 = await fetchWithTimeout(proxy, { cache: 'no-store' }, 20000);
+          if (!r2.ok) throw new Error('Proxy HTTP ' + r2.status);
+          const d = await r2.json();
+          return d.contents || '';
+        } catch(pe) {
+          throw new Error(`All attempts failed. Last: ${pe.message}`);
+        }
+      }
+      await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
     }
-    updateTabCounts(filtered);
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  SCAN ORCHESTRATOR
+// ══════════════════════════════════════════════════════
+async function startScan() {
+  if (S.scanning) {
+    S.cancelFlag = true;
+    document.getElementById('scanbtn').textContent = '⏹ STOPPING…';
     return;
   }
 
-  window._renderedFindings = filtered;
+  const total = S.fileSources.length + S.urlSources.length;
+  if (total === 0) { showToast('Add files or URLs first!'); return; }
 
-  const bySource = {};
-  filtered.forEach(f => {
-    if (!bySource[f.source]) bySource[f.source] = [];
-    bySource[f.source].push(f);
-  });
+  S.scanning   = true;
+  S.cancelFlag = false;
+  document.getElementById('scanbtn').textContent = '⏹ STOP SCAN';
+  setScanBar(true, 'Preparing…');
+  setPbar(0);
 
-  let html = '';
-  for (const [src, items] of Object.entries(bySource)) {
-    html += '<div class="source-header"><span class="src-icon">\u25c8</span>' + escHtml(src) + ' <span style="color:var(--muted)">(' + items.length + ')</span></div>';
-    items.forEach(f => {
-      const cls = CAT_CLASS[f.category] || '';
-      const idx = filtered.indexOf(f);
-      html += '<div class="result-row" data-idx="' + idx + '">' +
-        '<div class="result-cat-dot ' + cls + '"></div>' +
-        '<div class="result-badge ' + cls + '">' + (f.category === 'endpoints' ? 'EP' : f.category === 'urls' ? 'URL' : f.category === 'secrets' ? 'SEC' : f.category === 'creds' ? 'CRED' : f.category === 'unauth' ? 'OPEN' : f.category === 'emails' ? 'MAIL' : 'FILE') + '</div>' +
-        '<div class="result-value" title="' + escHtml(f.value) + '">' + escHtml(f.value) + '</div>' +
-        '<div class="result-source">' + escHtml(f.source) + '</div>' +
-        '<button class="copy-btn" data-idx="' + idx + '">copy</button>' +
-        '</div>';
-    });
+  const sel = document.getElementById('srcsel');
+  while (sel.options.length > 1) sel.remove(1);
+
+  let done = 0;
+
+  for (const f of S.fileSources) {
+    if (S.cancelFlag) break;
+    setFileStatus(f.id, 'processing');
+    setScanBar(true, `Reading ${f.name}…`);
+    let content = '';
+    try {
+      content = await readFile(f.fileObj);
+      content = preprocessContent(content, f.name);
+      addLog(`Analyzing: ${f.name} (${fmtBytes(f.size)}, ${content.length.toLocaleString()} chars)`, 'info');
+    } catch(e) {
+      setFileStatus(f.id, 'error');
+      addLog(`✗ Read failed: ${f.name} — ${e.message}`, 'err');
+      done++; setPbar(done / total * 100); continue;
+    }
+    try {
+      const found = await analyzeContent(content, f.name, pct => {
+        setPbar((done + pct) / total * 100);
+        setScanBar(true, `${f.name}: ${Math.round(pct*100)}%`);
+      });
+      S.findings.push(...found);
+      addSourceOpt(f.name);
+      setFileStatus(f.id, 'done');
+      addLog(`✓ ${f.name} → ${found.length} findings`, 'ok');
+    } catch(e) {
+      setFileStatus(f.id, 'error');
+      addLog(`✗ Analyze failed: ${f.name} — ${e.message}`, 'err');
+    }
+    done++; setPbar(done / total * 100);
+    renderResults(); updateStats();
+    await sleep();
   }
-  list.innerHTML = html;
-  updateTabCounts(filtered);
+
+  for (const u of S.urlSources) {
+    if (S.cancelFlag) break;
+    setUrlStatus(u.id, 'loading');
+    setScanBar(true, `Fetching ${u.url}`);
+    addLog(`Fetching: ${u.url}`, 'info');
+    let content = '';
+    try {
+      content = await fetchUrl(u.url);
+    } catch(e) {
+      setUrlStatus(u.id, 'error');
+      addLog(`✗ Fetch failed: ${u.url} — ${e.message}`, 'err');
+      done++; setPbar(done / total * 100); continue;
+    }
+    const name = u.url.split('/').pop().split('?')[0] || u.url;
+    const processed = preprocessContent(content, name);
+    try {
+      const found = await analyzeContent(processed, name, pct => setPbar((done + pct) / total * 100));
+      S.findings.push(...found);
+      addSourceOpt(name);
+      setUrlStatus(u.id, 'done');
+      addLog(`✓ ${name} → ${found.length} findings`, 'ok');
+    } catch(e) {
+      addLog(`✗ Analyze failed: ${name} — ${e.message}`, 'err');
+    }
+    done++; setPbar(done / total * 100);
+    renderResults(); updateStats();
+    await sleep();
+  }
+
+  S.scanning = false;
+  document.getElementById('scanbtn').textContent = '⚡ ANALYZE ALL';
+  setScanBar(false);
+  setPbar(100);
+  setTimeout(() => setPbar(0), 1000);
+  showToast(S.cancelFlag ? 'Scan cancelled' : `Done! ${S.findings.length} findings`);
+  renderResults(); updateStats();
 }
 
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+// ══════════════════════════════════════════════════════
+//  RENDER
+// ══════════════════════════════════════════════════════
+const CAT_CLS   = {endpoints:'ep',urls:'url',secrets:'sec',creds:'cred',unauth:'unauth',emails:'mail',files:'file',entropy:'entropy',cloud:'cloud'};
+const CAT_BADGE = {endpoints:'EP',urls:'URL',secrets:'SEC',creds:'CRED',unauth:'OPEN',emails:'MAIL',files:'FILE',entropy:'H',cloud:'CLD'};
+
+function scheduleRender() {
+  if (S.renderPending) return;
+  S.renderPending = true;
+  requestAnimationFrame(() => { S.renderPending = false; renderResults(); });
+}
+
+function renderResults() {
+  const rlist  = document.getElementById('rlist');
+  const search = document.getElementById('search').value.toLowerCase().trim();
+  const srcf   = document.getElementById('srcsel').value;
+  const conff  = document.getElementById('confsel').value;
+
+  const filtered = S.findings.filter(f => {
+    if (S.activeTab !== 'all' && f.cat !== S.activeTab) return false;
+    if (!S.filters.has(f.cat)) return false;
+    if (srcf !== 'all' && f.src !== srcf) return false;
+    if (conff !== 'all' && f.confidence !== conff) return false;
+    if (search && !f.val.toLowerCase().includes(search) && !f.src.toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  window._RF = filtered;
+  updateTabCounts(filtered);
+
+  if (filtered.length === 0) {
+    rlist.innerHTML = S.findings.length === 0
+      ? `<div class="empty"><pre>░░░░░░░░░░░░░░░░░░░░░░░░\n░  ADD JS URLS OR FILES ░\n░  THEN HIT ANALYZE    ░\n░░░░░░░░░░░░░░░░░░░░░░░░</pre><span>Waiting for input…</span></div>`
+      : `<div class="empty"><span>No results match filters</span></div>`;
+    return;
+  }
+
+  const MAX  = 5000;
+  const show = filtered.length > MAX ? filtered.slice(0, MAX) : filtered;
+
+  const bySource = Object.create(null);
+  show.forEach((f, i) => { (bySource[f.src] = bySource[f.src] || []).push({f, i}); });
+
+  const parts = [];
+  if (filtered.length > MAX) {
+    parts.push(`<div class="src-hdr" style="color:var(--warn)">⚠ Showing ${MAX} of ${filtered.length} — use filters to narrow</div>`);
+  }
+
+  for (const [src, items] of Object.entries(bySource)) {
+    parts.push(`<div class="src-hdr"><span style="color:var(--accent2)">◈</span> ${esc(src)} <span style="color:var(--muted)">(${items.length})</span></div>`);
+    for (const {f, i} of items) {
+      const c    = CAT_CLS[f.cat] || '';
+      const conf = f.confidence || 'med';
+      const ctx  = f.context ? `<span class="ctx-snip" title="${esc(f.context)}">${esc(f.context.slice(0,50))}</span>` : '';
+      const ent  = f.entropy ? `<span style="font-size:9px;color:var(--entropy);margin-left:4px">H:${f.entropy}</span>` : '';
+      parts.push(
+        `<div class="rrow" data-i="${i}">` +
+        `<div class="cat-dot ${c}"></div>` +
+        `<div class="badge ${c}">${CAT_BADGE[f.cat]||f.cat}</div>` +
+        `<span class="conf-badge ${conf}">${conf}</span>` +
+        `<div class="rval" title="${esc(f.val)}">${esc(f.val)}${ent}</div>` +
+        ctx +
+        `<div class="rsrc">${esc(f.src)}</div>` +
+        `<button class="cbtn" data-i="${i}">copy</button>` +
+        `</div>`
+      );
+    }
+  }
+
+  rlist.innerHTML = parts.join('');
 }
 
 function updateTabCounts(filtered) {
-  const counts = {all: filtered.length, endpoints:0, urls:0, secrets:0, creds:0, unauth:0, emails:0, files:0};
-  filtered.forEach(f => { if (counts[f.category]!==undefined) counts[f.category]++; });
-  for (const [k,v] of Object.entries(counts)) {
-    const el = document.getElementById('tc-'+k);
-    if (el) el.textContent = v;
+  const c = {all:filtered.length,endpoints:0,urls:0,secrets:0,creds:0,unauth:0,emails:0,files:0,entropy:0,cloud:0};
+  filtered.forEach(f => { if (c[f.cat] !== undefined) c[f.cat]++; });
+  for (const [k,n] of Object.entries(c)) {
+    const el = document.getElementById('tn-'+k);
+    if (el) el.textContent = n;
   }
 }
 
 function updateStats() {
-  const cats   = ['endpoints','urls','secrets','creds','unauth','emails','files'];
-  const keys   = ['ep',      'url', 'sec',    'cred', 'unauth','mail',  'file'];
-  cats.forEach((c,i) => {
-    const n = allFindings.filter(f=>f.category===c).length;
-    const cnt = document.getElementById('cnt-'+keys[i]);
-    const stat = document.getElementById('stat-'+keys[i]);
-    if (cnt)  cnt.textContent = n;
-    if (stat) stat.classList.toggle('zero', n===0);
-  });
-}
-
-// ═══════════════════════════════════════════════════════
-//  TABS & FILTERS
-// ═══════════════════════════════════════════════════════
-function switchTab(el) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  activeTab = el.dataset.tab;
-  renderResults();
-}
-
-function toggleChip(el) {
-  const cat = el.dataset.cat;
-  if (activeFilters.has(cat)) { activeFilters.delete(cat); el.classList.add('off'); }
-  else                        { activeFilters.add(cat);    el.classList.remove('off'); }
-  renderResults();
-}
-
-// ═══════════════════════════════════════════════════════
-//  COPY & EXPORT
-// ═══════════════════════════════════════════════════════
-function copyValue(val, btn) {
-  navigator.clipboard.writeText(val).then(() => {
-    if (btn && btn.classList.contains('copy-btn')) {
-      const orig = btn.textContent;
-      btn.textContent = '\u2713';
-      btn.classList.add('copied');
-      setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1200);
-    } else {
-      toast('Copied!');
-    }
-  });
-}
-
-function copyAllVisible() {
-  const search = document.getElementById('search-input').value.toLowerCase();
-  const srcFilter = document.getElementById('source-select').value;
-  const vals = allFindings
-    .filter(f => {
-      if (activeTab !== 'all' && f.category !== activeTab) return false;
-      if (!activeFilters.has(f.category)) return false;
-      if (srcFilter !== 'all' && f.source !== srcFilter) return false;
-      if (search && !f.value.toLowerCase().includes(search)) return false;
-      return true;
-    })
-    .map(f => f.value);
-  navigator.clipboard.writeText(vals.join('\n')).then(() => toast('Copied ' + vals.length + ' items'));
-}
-
-function exportJSON() {
-  const out = {};
-  allFindings.forEach(f => {
-    if (!out[f.source]) out[f.source] = {};
-    if (!out[f.source][f.category]) out[f.source][f.category] = [];
-    out[f.source][f.category].push(f.value);
-  });
-  download('js_findings.json', JSON.stringify(out, null, 2), 'application/json');
-}
-
-function exportTXT() {
-  let txt = 'JS ANALYZER RESULTS\n' + '='.repeat(60) + '\n';
-  const bySource = {};
-  allFindings.forEach(f => {
-    if (!bySource[f.source]) bySource[f.source] = {};
-    if (!bySource[f.source][f.category]) bySource[f.source][f.category] = [];
-    bySource[f.source][f.category].push(f.value);
-  });
-  for (const [src, cats] of Object.entries(bySource)) {
-    txt += '\n[' + src + ']\n';
-    for (const [cat, vals] of Object.entries(cats)) {
-      txt += '\n  ' + cat.toUpperCase() + '\n';
-      vals.forEach(v => txt += '    ' + v + '\n');
-    }
+  const map = [
+    ['endpoints','ep'],['urls','url'],['secrets','sec'],['creds','cred'],
+    ['unauth','unauth'],['emails','mail'],['files','file'],['entropy','entropy'],['cloud','cloud']
+  ];
+  for (const [cat, key] of map) {
+    const n   = S.findings.filter(f=>f.cat===cat).length;
+    const cel = document.getElementById('c-'+key);
+    const pel = document.getElementById('p-'+key);
+    if (cel) cel.textContent = n;
+    if (pel) pel.classList.toggle('zero', n===0);
   }
-  download('js_findings.txt', txt, 'text/plain');
 }
 
-function exportGrep() {
-  const vals = allFindings
-    .filter(f => activeTab==='all' || f.category===activeTab)
-    .filter(f => activeFilters.has(f.category))
-    .map(f => f.value);
-  download('js_grep.txt', vals.join('\n'), 'text/plain');
+// ══════════════════════════════════════════════════════
+//  UI HELPERS
+// ══════════════════════════════════════════════════════
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-
-function download(name, content, mime) {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([content], {type: mime}));
-  a.download = name;
-  a.click();
-  toast('Downloaded: ' + name);
+function setPbar(pct) { document.getElementById('pbar').style.width = Math.min(100,Math.max(0,pct))+'%'; }
+function setScanBar(on, msg) {
+  document.getElementById('scanbar').classList.toggle('on', on);
+  if (msg) document.getElementById('scanmsg').textContent = msg;
 }
-
-// ═══════════════════════════════════════════════════════
-//  MISC
-// ═══════════════════════════════════════════════════════
-function clearAll() {
-  allFindings = []; seen = new Set();
-  urlSources.forEach(s => s.status = 'pending');
-  renderUrlList();
-  const sel = document.getElementById('source-select');
-  while (sel.options.length > 1) sel.remove(1);
-  renderResults(); updateStats(); clearLog();
-  toast('Cleared');
+function addSourceOpt(name) {
+  const sel = document.getElementById('srcsel');
+  if (![...sel.options].find(o=>o.value===name)) {
+    const o = document.createElement('option');
+    o.value = o.textContent = name;
+    sel.appendChild(o);
+  }
 }
-
-function toast(msg) {
+function fmtBytes(b) {
+  if (b < 1024) return b+'B';
+  if (b < 1048576) return (b/1024).toFixed(1)+'KB';
+  return (b/1048576).toFixed(1)+'MB';
+}
+function showToast(msg) {
   const el = document.getElementById('toast');
   el.textContent = msg;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 2200);
+  el.classList.add('on');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('on'), 2500);
+}
+function addLog(msg, type='') {
+  S.logCount++;
+  document.getElementById('loglabel').textContent = `Console (${S.logCount})`;
+  const bar = document.getElementById('logbar');
+  const d   = document.createElement('div');
+  d.className = 'lline ' + type;
+  d.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  bar.appendChild(d);
+  if (bar.children.length > 500) bar.removeChild(bar.firstChild);
+  bar.scrollTop = bar.scrollHeight;
+}
+function setUrlStatus(id, st) {
+  const u = S.urlSources.find(x=>x.id===id);
+  if (u) { u.status = st; renderUrlList(); }
+}
+function setFileStatus(id, st) {
+  const f = S.fileSources.find(x=>x.id===id);
+  if (f) { f.status = st; renderFileList(); }
+}
+function renderUrlList() {
+  document.getElementById('urllist').innerHTML = S.urlSources.map(u =>
+    `<div class="url-item"><div class="dot-s ${u.status}"></div><div class="utxt" title="${esc(u.url)}">${esc(u.url)}</div><button class="xbtn" data-urlid="${u.id}">×</button></div>`
+  ).join('');
+}
+function renderFileList() {
+  document.getElementById('filelist').innerHTML = S.fileSources.map(f =>
+    `<div class="fitem"><span style="color:var(--file)">⬡</span><span class="fname" title="${esc(f.name)}">${esc(f.name)}</span><span class="fsize">${fmtBytes(f.size)}</span><span class="fst ${f.status}">${f.status}</span><button class="xbtn" data-fileid="${f.id}">×</button></div>`
+  ).join('');
+}
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    if (btn) { const o=btn.textContent; btn.textContent='✓'; btn.classList.add('ok'); setTimeout(()=>{ btn.textContent=o; btn.classList.remove('ok'); }, 1200); }
+    else showToast('Copied!');
+  }).catch(() => showToast('Copy failed'));
+}
+function download(name, content, mime) {
+  try {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([content], {type:mime}));
+    a.download = name; a.click();
+    showToast('Downloaded: ' + name);
+  } catch(e) { showToast('Download error: ' + e.message); }
 }
 
-function log(msg, type='') {
-  logLines++;
-  document.getElementById('log-label').textContent = 'Console (' + logLines + ')';
-  const el = document.getElementById('log-console');
-  const line = document.createElement('div');
-  line.className = 'log-line ' + type;
-  line.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
-  el.appendChild(line);
-  el.scrollTop = el.scrollHeight;
-}
+// ══════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
 
-function clearLog() {
-  logLines = 0;
-  document.getElementById('log-label').textContent = 'Console (0)';
-  document.getElementById('log-console').innerHTML = '';
-}
+  // ── URL add ──
+  document.getElementById('urladd').addEventListener('click', () => {
+    const inp = document.getElementById('urlinput');
+    const raw = inp.value.trim();
+    if (!raw) return;
+    raw.split(/[\s,\n]+/).map(s=>s.trim()).filter(s=>s.startsWith('http')).forEach(url => {
+      if (!S.urlSources.find(u=>u.url===url))
+        S.urlSources.push({id:++S.uid, url, status:'pending'});
+    });
+    inp.value = '';
+    renderUrlList();
+  });
+  document.getElementById('urlinput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('urladd').click();
+  });
 
-function toggleLog() {
-  const el = document.getElementById('log-console');
-  const btn = document.getElementById('toggle-log');
-  const isOpen = el.classList.toggle('open');
-  btn.classList.toggle('open', isOpen);
-}
+  // ── File input — fixed: listen on the input directly, works with z-index overlay ──
+  const fileInput = document.getElementById('fileinput');
+  fileInput.addEventListener('change', function() {
+    if (this.files && this.files.length > 0) {
+      registerFiles(this.files);
+      this.value = ''; // reset so same file can be re-added after clear
+    }
+  });
 
-// Persistent delegated click handler for result rows
-document.getElementById('results-list').addEventListener('click', function(e) {
-  const btn = e.target.closest('.copy-btn');
-  const row = e.target.closest('.result-row');
-  if (btn) {
-    e.stopPropagation();
-    const f = (window._renderedFindings || [])[+btn.dataset.idx];
-    if (f) copyValue(f.value, btn);
-  } else if (row) {
-    const f = (window._renderedFindings || [])[+row.dataset.idx];
-    if (f) copyValue(f.value, null);
-  }
+  // ── Drag & drop ──
+  const dz = document.getElementById('dropzone');
+  dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('over'); });
+  dz.addEventListener('dragleave', e => { if (!dz.contains(e.relatedTarget)) dz.classList.remove('over'); });
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('over');
+    if (e.dataTransfer.files.length > 0) registerFiles(e.dataTransfer.files);
+  });
+
+  // ── Entropy sliders ──
+  const et = document.getElementById('entropy-thresh');
+  const el = document.getElementById('entropy-minlen');
+  et.addEventListener('input', () => {
+    S.entropyThresh = parseFloat(et.value);
+    document.getElementById('entropy-val').textContent = parseFloat(et.value).toFixed(1);
+  });
+  el.addEventListener('input', () => {
+    S.entropyMinLen = parseInt(el.value);
+    document.getElementById('entropy-lenval').textContent = el.value;
+  });
+
+  // ── Scan ──
+  document.getElementById('scanbtn').addEventListener('click', startScan);
+
+  // ── Clear ──
+  document.getElementById('clearbtn').addEventListener('click', () => {
+    if (S.scanning) S.cancelFlag = true;
+    S.findings = []; S.seen = new Set();
+    S.urlSources.forEach(u => u.status = 'pending');
+    S.fileSources.forEach(f => f.status = 'pending');
+    renderUrlList(); renderFileList();
+    const sel = document.getElementById('srcsel');
+    while (sel.options.length > 1) sel.remove(1);
+    renderResults(); updateStats();
+    showToast('Cleared');
+  });
+
+  // ── Exports ──
+  document.getElementById('expjson').addEventListener('click', () => {
+    const out = {};
+    S.findings.forEach(f => {
+      if (!out[f.src]) out[f.src] = {};
+      if (!out[f.src][f.cat]) out[f.src][f.cat] = [];
+      out[f.src][f.cat].push({ val: f.val, confidence: f.confidence, context: f.context });
+    });
+    download('js_findings.json', JSON.stringify(out, null, 2), 'application/json');
+  });
+  document.getElementById('exptxt').addEventListener('click', () => {
+    let txt = 'JS ANALYZER v2\n' + '='.repeat(60) + '\n';
+    const bySrc = {};
+    S.findings.forEach(f => {
+      (bySrc[f.src] = bySrc[f.src] || {})[f.cat] = bySrc[f.src][f.cat] || [];
+      bySrc[f.src][f.cat].push(f.val);
+    });
+    for (const [src, cats] of Object.entries(bySrc)) {
+      txt += `\n[${src}]\n`;
+      for (const [cat, vals] of Object.entries(cats)) {
+        txt += `\n  ${cat.toUpperCase()}\n`;
+        vals.forEach(v => txt += `    ${v}\n`);
+      }
+    }
+    download('js_findings.txt', txt, 'text/plain');
+  });
+  document.getElementById('expgrep').addEventListener('click', () => {
+    const vals = (window._RF || []).map(f => f.val);
+    download('js_grep.txt', vals.join('\n'), 'text/plain');
+  });
+
+  // ── Copy all ──
+  document.getElementById('copyall').addEventListener('click', () => {
+    const vals = (window._RF || []).map(f => f.val);
+    copyText(vals.join('\n'), null);
+    showToast(`Copied ${vals.length} items`);
+  });
+
+  // ── Filters ──
+  document.getElementById('search').addEventListener('input', scheduleRender);
+  document.getElementById('srcsel').addEventListener('change', scheduleRender);
+  document.getElementById('confsel').addEventListener('change', e => {
+    S.confFilter = e.target.value;
+    scheduleRender();
+  });
+
+  // ── Tabs ──
+  document.getElementById('tabs').addEventListener('click', e => {
+    const tab = e.target.closest('.tab');
+    if (!tab) return;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    S.activeTab = tab.dataset.tab;
+    renderResults();
+  });
+
+  // ── Category chips ──
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const cat = chip.dataset.cat;
+      if (S.filters.has(cat)) { S.filters.delete(cat); chip.classList.add('off'); }
+      else                    { S.filters.add(cat);    chip.classList.remove('off'); }
+      renderResults();
+    });
+  });
+
+  // ── URL list remove ──
+  document.getElementById('urllist').addEventListener('click', e => {
+    const btn = e.target.closest('[data-urlid]');
+    if (btn) { S.urlSources = S.urlSources.filter(u=>u.id!==+btn.dataset.urlid); renderUrlList(); }
+  });
+
+  // ── File list remove ──
+  document.getElementById('filelist').addEventListener('click', e => {
+    const btn = e.target.closest('[data-fileid]');
+    if (btn) { S.fileSources = S.fileSources.filter(f=>f.id!==+btn.dataset.fileid); renderFileList(); }
+  });
+
+  // ── Results copy/click ──
+  document.getElementById('rlist').addEventListener('click', e => {
+    const cbtn = e.target.closest('.cbtn');
+    const rrow = e.target.closest('.rrow');
+    if (cbtn) {
+      e.stopPropagation();
+      const f = (window._RF||[])[+cbtn.dataset.i];
+      if (f) copyText(f.rawVal || f.val, cbtn);
+    } else if (rrow) {
+      const f = (window._RF||[])[+rrow.dataset.i];
+      if (f) copyText(f.rawVal || f.val, null);
+    }
+  });
+
+  // ── Log toggle ──
+  document.getElementById('logtog').addEventListener('click', () => {
+    const bar = document.getElementById('logbar');
+    const tog = document.getElementById('logtog');
+    bar.classList.toggle('on');
+    tog.classList.toggle('on', bar.classList.contains('on'));
+  });
 });
 </script>
 </body>
